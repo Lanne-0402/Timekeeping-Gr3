@@ -13,9 +13,10 @@
     <nav class="nav">
       <button class="nav-item active" data-route="home">Trang chủ</button>
       <button class="nav-item" data-route="history">Lịch sử chấm công</button>
+      <button class="nav-item" data-route="settings">Cài đặt</button>
     </nav>
     <div class="profile-mini">
-      <img id="miniAvatar" class="avatar" src="assets/v.jpg" alt="avatar"/>
+     
       <div>
         <div class="name"> Nguyễn Ngọc Gia Hân</div>
         <div class="status">Active</div>
@@ -60,7 +61,6 @@
         <!-- hàng 1 -->
         <div class="row">
           <div class="card welcome">
-            <img id="empAvatar" class="avatar-lg" src="assets/v.jpg" alt="avatar"/>
             <div class="welcome-text">
               <div class="hello">Xin chào, <span id="empName">Nguyễn Ngọc Gia Hân</span></div>
               <div class="dept">Bộ phận: <strong id="empDept">Kinh doanh</strong></div>
@@ -135,6 +135,36 @@
         </div>
       </section>
     </section>
+    <!-- Cài đặt (đổi mật khẩu) -->
+
+<section id="settings" class="route hidden">
+  <div class="settings-wrap">
+    <h2>Cài đặt tài khoản</h2>
+    <p class="subtitle">Đổi mật khẩu đăng nhập của bạn .</p>
+
+    <form id="changePassForm" class="settings-form">
+      <label>
+        <span>Mật khẩu hiện tại</span>
+        <input id="curPass" type="password" placeholder="Nhập mật khẩu hiện tại" required>
+      </label>
+
+      <label>
+        <span>Mật khẩu mới</span>
+        <input id="newPass" type="password" placeholder="Tối thiểu 6 ký tự" required>
+      </label>
+
+      <label>
+        <span>Nhập lại mật khẩu mới</span>
+        <input id="newPass2" type="password" placeholder="Nhập lại mật khẩu mới" required>
+      </label>
+
+      <button class="btn primary" type="submit">Lưu mật khẩu</button>
+
+      <div id="changePassMsg"></div>
+    </form>
+  </div>
+</section>
+
   </main>
   <!-- MODAL GỬI YÊU CẦU CHỈNH SỬA / KHIẾU NẠI -->
 <dialog id="requestModal">
