@@ -21,9 +21,9 @@
       <button class="nav-item" data-route="shifts">Quản lý ca làm</button>
       <button class="nav-item" data-route="reports">Thống kê &amp; báo cáo</button>
       <button class="nav-item" data-route="requests">Duyệt yêu cầu</button>
+      <button class="nav-item" data-route="settings">Cài đặt</button>
     </nav>
     <div class="profile-mini">
-      <img class="avatar" src="assets/jungkook.jpg" alt="avatar"/>
       <div>
         <div class="name">Manager</div>
         <div class="status">Online</div>
@@ -229,6 +229,47 @@
               <tbody></tbody>
             </table>
           </div>
+        </div>
+      </section>
+            <!-- 4. Duyệt yêu cầu -->
+      <section id="requests" class="route hidden">
+        <!-- ... giữ nguyên code duyệt yêu cầu ... -->
+      </section>
+
+      <!-- 5. Cài đặt tài khoản -->
+      <section id="settings" class="route hidden">
+        <div class="card">
+          <h2>Cài đặt tài khoản</h2>
+          <p class="muted">
+            Đổi mật khẩu đăng nhập của bạn.
+          </p>
+
+          <form id="mgrChangePassForm" class="settings-form">
+            <label>
+              <span>Mật khẩu hiện tại</span>
+              <input id="mgrOldPass" type="password"
+                     required
+                     placeholder="Nhập mật khẩu hiện tại">
+            </label>
+
+            <label>
+              <span>Mật khẩu mới</span>
+              <input id="mgrNewPass" type="password"
+                     required
+                     placeholder="Tối thiểu 6 ký tự">
+            </label>
+
+            <label>
+              <span>Nhập lại mật khẩu mới</span>
+              <input id="mgrNewPass2" type="password"
+                     required
+                     placeholder="Nhập lại mật khẩu mới">
+            </label>
+
+            <div id="mgrPassError" class="error-msg" style="display:none;"></div>
+
+            <button type="submit" class="btn primary">Lưu mật khẩu</button>
+          </form>
         </div>
       </section>
 
