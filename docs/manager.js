@@ -60,7 +60,7 @@ let reviewRequests = [
 let editingEmpId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // ===== Kiểm tra đăng nhập & role =====
+  // ===== Kiểm tra đăng nhập & role =====
   const rawUser = localStorage.getItem("tkUser");
   if (!rawUser) {
     window.location.href = "auth.html";
@@ -85,9 +85,11 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "auth.html";
   });
 
-  // Sidebar nav
-  document.querySelectorAll(".nav-item").forEach(btn=>{
-    btn.addEventListener("click", () => gotoRoute(btn.dataset.route, btn));
+  // ===== Sidebar nav (bỏ qua nút không có data-route, ví dụ Đăng xuất) =====
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    const route = btn.dataset.route;
+    if (!route) return;
+    btn.addEventListener("click", () => gotoRoute(route, btn));
   });
 
   // Quản lý nhân viên
@@ -114,6 +116,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Tổng quan
   updateOverview();
+
+  // ===== CÀI ĐẶT: ĐỔI MẬT KHẨU (DEMO) =====
+  const mgrChangeForm = document.getElementById("mgrChangePassForm");
+  if (mgrChangeForm) {
+    mgrChangeForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const oldPass  = document.getElementById("mgrOldPass").value;
+      const newPass  = document.getElementById("mgrNewPass").value;
+      const newPass2 = document.getElementById("mgrNewPass2").value;
+      const errBox   = document.getElementById("mgrPassError");
+
+      errBox.style.display = "none";
+      errBox.textContent   = "";
+
+      // user đang đăng nhập (demo)
+      const raw = localStorage.getItem("tkUser");
+      let currentUser = raw ? JSON.parse(raw) : null;
+
+      // trong demo, mật khẩu gốc là currentUser.password nếu có, không thì 123456
+      const realCurrent = currentUser?.password || "123456";
+
+      if (oldPass !== realCurrent) {
+        errBox.textContent = "Mật khẩu hiện tại không đúng (demo).";
+        errBox.style.display = "block";
+        return;
+      }
+
+      if (newPass.length < 6) {
+        errBox.textContent = "Mật khẩu mới phải ít nhất 6 ký tự.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      if (newPass !== newPass2) {
+        errBox.textContent = "Mật khẩu nhập lại không khớp.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      // Demo: chỉ cập nhật mật khẩu trong tkUser ở localStorage
+      if (currentUser) {
+        currentUser.password = newPass;
+        localStorage.setItem("tkUser", JSON.stringify(currentUser));
+      }
+
+      alert("Đã đổi mật khẩu.");
+      mgrChangeForm.reset();
+    });
+  }
 });
 
 // ==== Router ====
