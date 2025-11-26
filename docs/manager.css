@@ -324,6 +324,48 @@ body{
 .route.hidden{
   display:none !important;
 }
+/* Text mờ dùng cho mô tả nhỏ */
+.muted{
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Hộp báo lỗi đỏ */
+.error-msg{
+  margin-top: 8px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+/* Form cài đặt mật khẩu quản lý */
+.settings-form{
+  max-width: 480px;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-form label{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-form input{
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.settings-form .btn{
+  margin-top: 4px;
+  align-self: flex-start;
+}
 
 /* ===== MODAL NHÂN VIÊN (common) ===== */
 #empDialog{
