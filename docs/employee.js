@@ -2,7 +2,7 @@
 const EMP = {
   name: "Nguyễn Ngọc Gia Hân",
   dept: "Kinh doanh",
-  avatar: "assets/v.jpg"
+  avatar: "https://i.pravatar.cc/96?img=15"
 };
 
 let historyData = [
@@ -13,7 +13,7 @@ let historyData = [
   {date:'2025-11-10', in:'08:01', out:'17:05', work:484, note:'QR'}
 ];
 
-// danh sách yêu cầu chỉnh sửa / khiếu nại
+// danh sách yêu cầu chỉnh sửa / khiếu nại (demo – lưu tạm trên RAM)
 let requests = [];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const user = JSON.parse(rawUser);
 
-  // chỉ cho phép role = employee vào trang này
   if (user.role !== "employee") {
     window.location.href = "auth.html";
     return;
@@ -38,10 +37,10 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "auth.html";
   });
 
-  // ===== Router menu trái (đổi màu active) =====
+  // ===== Router menu trái (bỏ qua nút không có data-route như Đăng xuất) =====
   document.querySelectorAll(".nav-item").forEach(btn => {
     const route = btn.dataset.route;
-    if (!route) return;              // nút Đăng xuất không có route
+    if (!route) return;
     btn.onclick = () => goto(route, btn);
   });
 
@@ -62,9 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
     miniAvatar.src = EMP.avatar;
   }
 
-  // ===== Load requests từ localStorage (để manager thấy chung) =====
-  requests = JSON.parse(localStorage.getItem("requests") || "[]");
-
   // ===== Cột phải: Tổng quan + danh sách yêu cầu =====
   renderActivity();
   renderRequests();
@@ -76,6 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ===== Lịch sử: lọc theo ngày =====
+  const btnFilter = document.getElementById("btnFilter");
+  const fromDate  = document.getElementById("fromDate");
+  const toDate    = document.getElementById("toDate");
+
   btnFilter?.addEventListener("click", () => {
     const f = fromDate.value;
     const t = toDate.value;
@@ -85,11 +85,11 @@ document.addEventListener("DOMContentLoaded", () => {
     renderHistory(d);
   });
 
-  // ===== Mở / đóng / submit Modal YÊU CẦU =====
-  const btnReq = document.getElementById("btnRequest");
+  // ===== Modal YÊU CẦU (chỉnh sửa / khiếu nại) =====
+  const btnReq       = document.getElementById("btnRequest");
   const requestModal = document.getElementById("requestModal");
-  const requestForm = document.getElementById("requestForm");
-  const reqCancel  = document.getElementById("reqCancel");
+  const requestForm  = document.getElementById("requestForm");
+  const reqCancel    = document.getElementById("reqCancel");
 
   btnReq?.addEventListener("click", () => {
     requestModal?.showModal();
@@ -102,33 +102,59 @@ document.addEventListener("DOMContentLoaded", () => {
   requestForm?.addEventListener("submit", (e) => {
     e.preventDefault();
     const item = {
-      type: reqType.value,           // chinh-sua | khieu-nai
-      date: reqDate.value,
+      type:  reqType.value,          // chinh-sua | khieu-nai
+      date:  reqDate.value,
       shift: reqShift.value,         // Sáng | Chiều | Khác
-      cin: reqIn.value,
-      cout: reqOut.value,
-      note: reqNote.value,
-      status: 'Chờ duyệt'
+      cin:   reqIn.value,
+      cout:  reqOut.value,
+      note:  reqNote.value,
+      status:'Đã gửi'
     };
-
-    // ==== LƯU VÀO localStorage ĐỂ TRANG MANAGER ĐỌC ĐƯỢC ====
-    let stored = JSON.parse(localStorage.getItem("requests") || "[]");
-
-    stored.unshift({
-      ...item,
-      empName: empName.textContent,
-      empDept: empDept.textContent
-    });
-
-    localStorage.setItem("requests", JSON.stringify(stored));
-
-    // cập nhật biến global & UI danh sách bên phải
-    requests = stored;
+    requests.unshift(item);
     renderRequests();
-
     requestModal.close();
     requestForm.reset();
   });
+
+  // ===== Cài đặt: đổi mật khẩu (demo) =====
+  const changePassForm = document.getElementById("changePassForm");
+  const changePassMsg  = document.getElementById("changePassMsg");
+
+  if (changePassForm && changePassMsg) {
+    changePassForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const cur = document.getElementById("curPass").value;
+      const p1  = document.getElementById("newPass").value;
+      const p2  = document.getElementById("newPass2").value;
+
+      changePassMsg.classList.remove("error");
+      changePassMsg.textContent = "";
+
+      // Demo: mật khẩu hiện tại của TK demo là 123456
+      const currentDemoPass = "123456";
+      if (cur !== currentDemoPass) {
+        changePassMsg.textContent = "Mật khẩu hiện tại không đúng.";
+        changePassMsg.classList.add("error");
+        return;
+      }
+
+      if (p1.length < 6) {
+        changePassMsg.textContent = "Mật khẩu mới phải ít nhất 6 ký tự.";
+        changePassMsg.classList.add("error");
+        return;
+      }
+      if (p1 !== p2) {
+        changePassMsg.textContent = "Mật khẩu nhập lại không khớp.";
+        changePassMsg.classList.add("error");
+        return;
+      }
+
+      // Demo: chỉ hiển thị thông báo, chưa liên kết với logic đăng nhập thật
+      changePassMsg.textContent =
+        "Đổi mật khẩu thành công";
+      changePassForm.reset();
+    });
+  }
 });
 
 // ====== Router ======
@@ -138,9 +164,9 @@ function goto(route, btn){
   document.querySelectorAll(".nav-item")
     .forEach(b => b.classList.toggle("active", b === btn));
 
-  if(route === 'history'){
+  if (route === 'history') {
     const hasRow = document.querySelector("#histTable tbody")?.children.length;
-    if(!hasRow) renderHistory(historyData);
+    if (!hasRow) renderHistory(historyData);
   }
 }
 
@@ -148,8 +174,8 @@ function goto(route, btn){
 function renderActivity(){
   const set = new Set(historyData.map(x => x.date));
   const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
+  const y   = now.getFullYear();
+  const m   = now.getMonth();
   const todayDate = now.getDate();
 
   let worked = 0;
@@ -158,7 +184,7 @@ function renderActivity(){
     if (set.has(dd)) worked++;
   }
   daysWorked.textContent = worked;
-  daysOff.textContent = Math.max(0, todayDate - worked);
+  daysOff.textContent    = Math.max(0, todayDate - worked);
 }
 
 // ====== Calendar (✓ đã chấm / ✗ chưa chấm / ngày tương lai để trống) ======
@@ -182,7 +208,7 @@ function buildCalendar(date){
   });
 
   const first = new Date(y, m, 1);
-  let startIndex = (first.getDay()+6)%7; // T2=0
+  let startIndex = (first.getDay()+6) % 7; // T2=0
   const days = new Date(y, m+1, 0).getDate();
 
   const attend = new Set(historyData.map(h => h.date));
@@ -203,13 +229,12 @@ function buildCalendar(date){
     thisDay.setHours(0,0,0,0);
 
     if (thisDay > today){
-      // ngày tương lai: để trống
       cell.className = "cell";
       cell.innerHTML = `<div class="day">${d}</div><div class="mark" style="color:#cbd5e1">&nbsp;</div>`;
     } else {
       const marked = attend.has(key);
-      cell.className = `cell ${marked?'ok':'no'}`;
-      cell.innerHTML = `<div class="day">${d}</div><div class="mark">${marked?'✓':'✗'}</div>`;
+      cell.className = `cell ${marked ? 'ok' : 'no'}`;
+      cell.innerHTML = `<div class="day">${d}</div><div class="mark">${marked ? '✓' : '✗'}</div>`;
     }
     grid.appendChild(cell);
   }
