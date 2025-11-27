@@ -1,26 +1,29 @@
-import { Router } from "express";
+import express from "express";
+import authMiddleware from "../middleware/auth.middleware.js";
+import adminOnly from "../middleware/admin.middleware.js";
 import {
   createShift,
   getShifts,
   assignShift,
-  getUserShifts
+  getUserShifts,
+  deleteShift,
 } from "../controllers/shifts.controllers.js";
 
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+const router = express.Router();
 
-const router = Router();
-
-// Admin tạo ca làm
+// Admin tạo ca
 router.post("/", authMiddleware, adminOnly, createShift);
 
-// Admin xem tất cả ca làm (hoặc ai cũng xem tùy bạn)
+// Admin xem danh sách ca
 router.get("/", authMiddleware, adminOnly, getShifts);
 
-// Admin gán ca làm cho nhân viên
+// Admin gán ca cho nhân viên
 router.post("/assign", authMiddleware, adminOnly, assignShift);
 
-// Nhân viên xem ca làm của chính mình
+// Nhân viên lấy ca của chính mình
 router.get("/user/:userId", authMiddleware, getUserShifts);
+
+// (Optional) Admin xoá ca
+router.delete("/:shiftId", authMiddleware, adminOnly, deleteShift);
 
 export default router;

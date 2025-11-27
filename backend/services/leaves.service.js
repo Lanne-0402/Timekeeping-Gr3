@@ -1,49 +1,71 @@
+// services/leaves.service.js
 import db from "../config/firebase.js";
 import { v4 as uuidv4 } from "uuid";
 
+const LEAVES_COLLECTION = "leaves";
+
 export const LeavesService = {
-  async create(data) {
+  // Tạo đơn nghỉ phép
+  async create({ userId, reason, date }) {
     const id = uuidv4();
+    const now = new Date();
 
     const leaveData = {
       id,
-      userId: data.userId,
-      reason: data.reason,
-      date: data.date,         // "2025-01-22"
-      status: "pending",
-      createdAt: new Date(),
-      updatedAt: new Date()
+      userId,
+      reason,
+      date,               // "YYYY-MM-DD"
+      status: "pending",  // pending | approved | rejected
+      adminNote: null,
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: now,
+      updatedAt: now,
     };
 
-    await db.collection("leaves").doc(id).set(leaveData);
+    await db.collection(LEAVES_COLLECTION).doc(id).set(leaveData);
     return leaveData;
   },
 
+  // Lấy đơn nghỉ phép theo user
   async getByUser(userId) {
-    const snap = await db.collection("leaves")
+    const snap = await db
+      .collection(LEAVES_COLLECTION)
       .where("userId", "==", userId)
-      .orderBy("date", "desc")
+      .orderBy("createdAt", "desc")
       .get();
 
-    return snap.docs.map((doc) => doc.data());
-  },
-
-  async getAll() {
-    const snap = await db.collection("leaves").get();
     return snap.docs.map((d) => d.data());
   },
 
-  async updateStatus(leaveId, status) {
-    const ref = db.collection("leaves").doc(leaveId);
+  // Admin: lấy tất cả đơn nghỉ phép
+  async getAll() {
+    const snap = await db
+      .collection(LEAVES_COLLECTION)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    return snap.docs.map((d) => d.data());
+  },
+
+  // Admin: cập nhật trạng thái đơn nghỉ phép
+  async updateStatus(leaveId, status, adminId, adminNote) {
+    const ref = db.collection(LEAVES_COLLECTION).doc(leaveId);
     const doc = await ref.get();
 
-    if (!doc.exists) throw new Error("Leave request not found");
+    if (!doc.exists) throw new Error("Không tìm thấy đơn nghỉ phép");
+
+    const now = new Date();
 
     await ref.update({
       status,
-      updatedAt: new Date()
+      adminNote: adminNote || null,
+      resolvedBy: adminId || null,
+      resolvedAt: now,
+      updatedAt: now,
     });
 
-    return { id: leaveId, status };
-  }
+    const updated = await ref.get();
+    return updated.data();
+  },
 };

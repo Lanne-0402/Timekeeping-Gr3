@@ -6,8 +6,8 @@ import {
   updateLeaveStatus
 } from "../controllers/leaves.controllers.js";
 
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { adminOnly } from "../middleware/admin.middleware.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import adminOnly from "../middleware/admin.middleware.js";
 
 const router = Router();
 

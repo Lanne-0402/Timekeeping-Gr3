@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Đăng nhập | Timekeeping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="auth.css" />
+  </head>
+  <body>
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <h1>Timekeeping</h1>
+        </div>
+
+        <!-- ========== LOGIN FORM ========== -->
+        <form id="loginForm" class="auth-form active">
+          <h2 class="subtitle">
+            Vui lòng đăng nhập bằng email và mật khẩu.
+          </h2>
+
+          <label>
+            <span>Email</span>
+            <input
+              id="loginEmail"
+              type="email"
+              required
+              placeholder="nhanvien@company.com"
+            />
+          </label>
+
+          <label>
+            <span>Mật khẩu</span>
+            <div class="pw-wrapper">
+              <input
+                type="password"
+                id="loginPassword"
+                placeholder="******"
+                required
+              />
+              <span class="toggle-pw" data-target="loginPassword">👁</span>
+            </div>
+          </label>
+
+          <div class="row between">
+            <label class="remember">
+              <input type="checkbox" />
+              <span>Ghi nhớ đăng nhập</span>
+            </label>
+
+            <button
+              type="button"
+              class="link-small view-switch"
+              data-view="reset"
+            >
+              Quên mật khẩu?
+            </button>
+          </div>
+
+          <button type="submit" class="btn primary">Đăng nhập</button>
+
+          <p class="switch">
+            Chưa có tài khoản?
+            <button
+              type="button"
+              class="view-switch"
+              data-view="register"
+            >
+              Đăng ký
+            </button>
+          </p>
+        </form>
+
+        <!-- ========== REGISTER FORM ========== -->
+        <form id="registerForm" class="auth-form">
+          <h1>Tạo tài khoản mới</h1>
+          <p class="subtitle">Đăng ký bằng email công ty của bạn.</p>
+
+          <label>
+            <span>Họ và tên</span>
+            <input
+              id="regName"
+              type="text"
+              required
+              placeholder="Nguyễn Văn A"
+            />
+          </label>
+
+          <label>
+            <span>Email</span>
+            <input
+              id="regEmail"
+              type="email"
+              required
+              placeholder="nhanvien@company.com"
+            />
+          </label>
+
+          <label>
+            <span>Mật khẩu</span>
+            <div class="pw-wrapper">
+              <input
+                type="password"
+                id="registerPassword"
+                placeholder="******"
+                required
+              />
+              <span class="toggle-pw" data-target="registerPassword">👁</span>
+            </div>
+          </label>
+
+          <label>
+            <span>Nhập lại mật khẩu</span>
+            <div class="pw-wrapper">
+              <input
+                type="password"
+                id="registerConfirmPassword"
+                placeholder="******"
+                required
+              />
+              <span
+                class="toggle-pw"
+                data-target="registerConfirmPassword"
+                >👁</span
+              >
+            </div>
+          </label>
+
+          <button type="submit" class="btn primary">Đăng ký</button>
+
+          <p class="switch">
+            Đã có tài khoản?
+            <button
+              type="button"
+              class="view-switch"
+              data-view="login"
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </form>
+
+        <!-- ========== OTP VERIFY FORM (ĐĂNG KÝ) ========== -->
+        <form id="otpForm" class="auth-form">
+          <h1>Xác thực Email</h1>
+          <p class="subtitle">
+            Nhập mã OTP được gửi tới email của bạn để hoàn tất đăng ký.
+          </p>
+
+          <label>
+            <span>Mã OTP</span>
+            <input
+              id="otpInput"
+              type="text"
+              maxlength="6"
+              placeholder="Nhập mã 6 số"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn primary">Xác nhận</button>
+
+          <p class="switch">
+            Trở lại đăng nhập?
+            <button
+              type="button"
+              class="view-switch"
+              data-view="login"
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </form>
+
+        <!-- ========== QUÊN MẬT KHẨU: NHẬP EMAIL NHẬN MÃ ========== -->
+        <form id="resetForm" class="auth-form">
+          <h1>Quên mật khẩu</h1>
+          <p class="subtitle">
+            Nhập email để nhận mã đặt lại mật khẩu.
+          </p>
+
+          <div
+            id="resetError"
+            class="error-msg"
+            style="display: none"
+          ></div>
+
+          <label>
+            <span>Email</span>
+            <input
+              id="resetEmail"
+              type="email"
+              required
+              placeholder="nhanvien@company.com"
+            />
+          </label>
+
+          <button type="submit" class="btn primary">Gửi mã</button>
+
+          <p class="switch">
+            Quay lại đăng nhập?
+            <button
+              type="button"
+              class="view-switch"
+              data-view="login"
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </form>
+
+        <!-- ========== ĐẶT LẠI MẬT KHẨU MỚI ========== -->
+        <form id="newPassForm" class="auth-form">
+          <h1>Đặt lại mật khẩu</h1>
+          <p class="subtitle">
+            Vui lòng nhập mật khẩu mới cho tài khoản của bạn.
+          </p>
+
+          <div
+            id="newPassError"
+            class="error-msg"
+            style="display: none"
+          ></div>
+
+          <label>
+            <span>Mật khẩu mới</span>
+            <input
+              id="newPass"
+              type="password"
+              required
+              placeholder="Nhập mật khẩu mới"
+            />
+          </label>
+
+          <label>
+            <span>Nhập lại mật khẩu mới</span>
+            <input
+              id="newPass2"
+              type="password"
+              required
+              placeholder="Nhập lại mật khẩu mới"
+            />
+          </label>
+
+          <button type="submit" class="btn primary">Lưu mật khẩu</button>
+
+          <p class="switch">
+            Quay lại đăng nhập?
+            <button
+              type="button"
+              class="view-switch"
+              data-view="login"
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- POPUP FACEID ĐƯỢC ĐẶT NGOÀI .auth-card ĐỂ KHÔNG CHE FORM -->
+    <div id="faceidPopup" class="popup hidden">
+      <div class="popup-content">
+        <h3>🎉 Xác thực email thành công!</h3>
+        <p>Hãy đăng ký FaceID để chấm công.</p>
+        <button id="startFaceID" class="btn primary">Bắt đầu</button>
+      </div>
+    </div>
+
+    <script src="auth.js"></script>
+  </body>
+</html>

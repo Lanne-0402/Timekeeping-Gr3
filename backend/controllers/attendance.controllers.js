@@ -1,46 +1,87 @@
 import {
-  handleCheckInService,
-  handleCheckOutService,
   fetchHistoryService,
-  fetchSummaryService
+  fetchSummaryService,
+  adminFetchAllAttendanceService,
+  adminFetchOneAttendanceService,
+  adminUpdateAttendanceService
 } from "../services/attendance.service.js";
+import { getUserCalendarService } from "../services/attendance.service.js";
 
-export const checkIn = async (req, res) => {
-  try {
-    const userId = req.user.userId; // lấy từ token
-    const result = await handleCheckInService(userId);
-    res.json({ success: true, message: "Check-in thành công", data: result });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const checkOut = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const result = await handleCheckOutService(userId);
-    res.json({ success: true, message: "Check-out thành công", data: result });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
+// USER — Lấy lịch sử chấm công
 export const getHistory = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const data = await fetchHistoryService(userId);
-    res.json({ success: true, data });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const userId = req.user.userId;
+    const records = await fetchHistoryService(userId);
+    return res.json({ success: true, data: records });
+  } catch (err) {
+    console.error("getHistory error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// USER — Thống kê tổng quan
 export const getSummary = async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const userId = req.user.userId;
     const summary = await fetchSummaryService(userId);
-    res.json({ success: true, data: summary });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.json({ success: true, data: summary });
+  } catch (err) {
+    console.error("getSummary error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ADMIN — Lấy toàn bộ attendance
+export const adminGetAllAttendance = async (req, res) => {
+  try {
+    const data = await adminFetchAllAttendanceService();
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error("adminGetAllAttendance error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ADMIN — Lấy 1 doc attendance
+export const adminGetOneAttendance = async (req, res) => {
+  try {
+    const { docId } = req.params;
+    const data = await adminFetchOneAttendanceService(docId);
+    if (!data) return res.status(404).json({ success: false, message: "Không tìm thấy" });
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error("adminGetOneAttendance error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ADMIN — Update giờ công
+export const adminUpdateAttendance = async (req, res) => {
+  try {
+    const { docId } = req.params;
+    const updates = req.body;
+    const result = await adminUpdateAttendanceService(docId, updates);
+    return res.json(result);
+  } catch (err) {
+    console.error("adminUpdateAttendance error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const getUserCalendar = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { month } = req.query; // format YYYY-MM
+
+    if (!month) {
+      return res.status(400).json({ success: false, message: "Thiếu month (YYYY-MM)." });
+    }
+
+    const data = await getUserCalendarService(userId, month);
+    return res.json({ success: true, data });
+
+  } catch (err) {
+    console.error("getUserCalendar error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

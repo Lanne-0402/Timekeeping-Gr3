@@ -1,12 +1,17 @@
+// controllers/leaves.controllers.js
 import { LeavesService } from "../services/leaves.service.js";
 
+// Nhân viên tạo đơn nghỉ phép
 export const createLeaveRequest = async (req, res) => {
   try {
-    const userId = req.user.userId;        // luôn lấy từ token
+    const userId = req.user.userId; // luôn lấy từ token
     const { reason, date } = req.body;
 
-    if (!reason || !date)
-      return res.status(400).json({ error: "Missing reason or date" });
+    if (!reason || !date) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu lý do hoặc ngày nghỉ" });
+    }
 
     const leave = await LeavesService.create({
       userId,
@@ -14,55 +19,70 @@ export const createLeaveRequest = async (req, res) => {
       date,
     });
 
-    res.status(201).json(leave);
-
+    return res.status(201).json({ success: true, data: leave });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("createLeaveRequest error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error khi tạo đơn nghỉ phép" });
   }
 };
 
+// Nhân viên xem lịch sử nghỉ phép của chính mình
 export const getLeaveByUser = async (req, res) => {
   try {
-    const requestedUserId = req.params.userId;
-    const authenticatedUserId = req.user.userId;
-    const role = req.user.role;
+    // Để an toàn, luôn dùng userId từ token,
+    // KHÔNG tin tham số trên URL
+    const userId = req.user.userId;
 
-    // Only self or admin can view
-    if (requestedUserId !== authenticatedUserId && role !== "admin") {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    const leaves = await LeavesService.getByUser(requestedUserId);
-    res.json(leaves);
-
+    const leaves = await LeavesService.getByUser(userId);
+    return res.json({ success: true, data: leaves });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("getLeaveByUser error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error khi lấy danh sách nghỉ phép" });
   }
 };
 
+// Admin xem tất cả đơn nghỉ phép
 export const getAllLeaves = async (req, res) => {
   try {
     const leaves = await LeavesService.getAll();
-    res.json(leaves);
-
+    return res.json({ success: true, data: leaves });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("getAllLeaves error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error khi lấy danh sách nghỉ phép" });
   }
 };
 
+// Admin duyệt / từ chối đơn nghỉ phép
 export const updateLeaveStatus = async (req, res) => {
   try {
     const { leaveId } = req.params;
-    const { status } = req.body;
+    const { status, adminNote } = req.body;
+    const adminId = req.user.userId;
 
     if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Trạng thái không hợp lệ" });
     }
 
-    const result = await LeavesService.updateStatus(leaveId, status);
-    res.json(result);
+    const result = await LeavesService.updateStatus(
+      leaveId,
+      status,
+      adminId,
+      adminNote
+    );
 
+    return res.json({ success: true, data: result });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("updateLeaveStatus error:", err);
+    return res
+      .status(400)
+      .json({ success: false, message: err.message || "Cập nhật thất bại" });
   }
 };

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Quản lý | Chấm công</title>
+
+  <link rel="stylesheet" href="manager.css"/>
+
+<!-- Google Maps JS -->
+  <script
+    async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCYw975FBYyM0AcZMTe33A1xH8Aw9Y-wz8&libraries=places">
+  </script>
+  <script defer src="manager.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">Timekeeping Admin</div>
+    <nav class="nav">
+      <button class="nav-item active" data-route="employees">Quản lý nhân viên</button>
+      <button class="nav-item" data-route="shifts">Quản lý ca làm</button>
+      <button class="nav-item" data-route="reports">Thống kê &amp; báo cáo</button>
+      <button class="nav-item" data-route="requests">Duyệt yêu cầu</button>
+      <button class="nav-item" data-route="location">Cài đặt vị trí</button>
+    </nav>
+
+    <div class="profile-mini">
+      <img class="avatar" src="assets/jungkook.jpg"/>
+      <div>
+        <div class="name">Manager</div>
+        <div class="status">Online</div>
+      </div>
+    </div>
+
+    <button id="mgrLogout" class="nav-item" style="margin-top:12px;">Đăng xuất</button>
+  </aside>
+
+  <!-- Activity -->
+  <aside class="activity">
+    <h3>Tổng quan</h3>
+    <section class="panel">
+      <h4>Hôm nay</h4>
+      <ul class="stats">
+        <li><span id="mgrTotalEmployees">0</span> nhân viên</li>
+        <li><span id="mgrTotalAssignments">0</span> lượt gán ca</li>
+        <li><span id="mgrPendingRequests">0</span> yêu cầu chờ duyệt</li>
+      </ul>
+    </section>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <section class="content">
+
+            <!-- ========== QUẢN LÝ NHÂN VIÊN ========== -->
+      <section id="employees" class="route">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Quản lý nhân viên</h2>
+            <div class="filters">
+              <input id="empSearch" type="text" placeholder="Tìm theo tên hoặc email">
+              <button id="btnReloadEmployees" class="pill-btn">Tải lại</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="empTable">
+              <thead>
+                <tr>
+                  <th>Mã NV</th>
+                  <th>Họ tên</th>
+                  <th>Email</th>
+                  <th>Bộ phận</th>
+                  <th>Trạng thái</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- JS sẽ fill -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== QUẢN LÝ CA LÀM (simple list) ========== -->
+      <section id="shifts" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Quản lý ca làm</h2>
+            <div class="filters">
+              <input id="shiftDate" placeholder="Chọn ngày…" class="date-input">
+
+              <input id="shiftStart" type="time">
+              <input id="shiftEnd" type="time">
+
+              <button id="btnCreateShift" class="pill-btn">Tạo ca</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="shiftTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Tên ca</th>
+                  <th>Giờ bắt đầu</th>
+                  <th>Giờ kết thúc</th>
+                  <th>Ghi chú</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- JS fill -->
+              </tbody>
+            </table>
+
+          </div>
+        </div>
+                <!-- MODAL GÁN CA -->
+        <div id="assignModal" class="modal hidden">
+          <div class="modal-content assign-modal">
+            <h3>Gán ca cho nhân viên</h3>
+
+            <div class="assign-grid">
+
+              <div class="assign-field">
+                <label>Nhân viên</label>
+                <select id="assignUser" multiple class="assign-select">
+                </select>
+              </div>
+
+              <div class="assign-field">
+                <label>Ca làm</label>
+                <select id="assignShiftSelect" multiple class="assign-select">
+                </select>
+              </div>
+
+            </div>
+
+            <div class="assign-bottom">
+              <div class="assign-date">
+                <label>Ngày</label>
+                <input id="assignDate" type="date">
+              </div>
+
+              <div class="assign-actions">
+                <button id="btnAssignConfirm" class="pill-btn blue">Gán ca</button>
+                <button id="btnAssignClose" class="pill-btn red">Đóng</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========== THỐNG KÊ & BÁO CÁO ========== -->
+      <section id="reports" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Thống kê & báo cáo</h2>
+            <div class="filters">
+              <input id="repTitle" type="text" placeholder="Tiêu đề báo cáo">
+              <input id="repFrom" type="date">
+              <input id="repTo" type="date">
+              <button id="btnCreateReport" class="pill-btn">Tạo báo cáo</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table id="reportTable">
+              <thead>
+                <tr>
+                  <th>Tiêu đề</th>
+                  <th>Khoảng thời gian</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- JS fill -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== DUYỆT YÊU CẦU ========== -->
+      <section id="requests" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Duyệt yêu cầu</h2>
+            <div class="filters">
+              <select id="reqFilter">
+                <option value="all">Tất cả</option>
+                <option value="pending">Đang chờ</option>
+                <option value="approved">Đã duyệt</option>
+                <option value="rejected">Đã từ chối</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table id="reqTable">
+              <thead>
+                <tr>
+                  <th>Nhân viên</th>
+                  <th>Ngày / Ca</th>
+                  <th>Loại</th>
+                  <th>Nội dung</th>
+                  <th>Trạng thái</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- JS fill -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================= CÀI ĐẶT VỊ TRÍ (MAP FREE) ================= -->
+      <section id="location" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Cài đặt vị trí công ty</h2>
+          </div>
+
+          <p style="color:var(--muted); margin-bottom:12px">
+            Chọn vị trí công ty để kiểm tra chấm công theo bán kính cho phép.
+          </p>
+
+          <!-- Leaflet Map -->
+          <div id="map" style="
+              width:100%;
+              height:380px;
+              border-radius:10px;
+              margin-bottom:12px;
+          "></div>
+
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input id="company-lat" type="number" step="0.000001" placeholder="Lat" style="flex:1;">
+            <input id="company-lng" type="number" step="0.000001" placeholder="Lng" style="flex:1;">
+            <input id="company-radius" type="number" placeholder="Bán kính (m)" value="200" style="width:150px;">
+          </div>
+
+          <button id="btnSaveLocation" class="pill-btn">Lưu vị trí</button>
+          <button id="btnGPS" class="btn outline" style="margin-left:10px;">Lấy GPS hiện tại</button>
+        </div>
+      </section>
+
+    </section>
+    
+  </main>
+</body>
+</html>

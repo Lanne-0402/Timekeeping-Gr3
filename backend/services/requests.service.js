@@ -2,125 +2,161 @@
 import db from "../config/firebase.js";
 import { v4 as uuidv4 } from "uuid";
 
+const REQUESTS_COLLECTION = "requests";
+const ATTENDANCE_COLLECTION = "attendance";
+
 export const RequestsService = {
+  // ----- Tạo yêu cầu mới từ nhân viên -----
   async create(userId, payload) {
-    const {
-      type,        
-      date,        
-      oldCheckIn,
-      oldCheckOut,
-      newCheckIn,
-      newCheckOut,
-      reason
-    } = payload;
+    const { type, date, shift, cin, cout, note } = payload || {};
 
-    if (!type || !date || !reason) {
-      throw new Error("Thiếu dữ liệu bắt buộc");
+    if (!date) {
+      throw new Error("Vui lòng chọn ngày.");
     }
 
-    if (!["edit", "complaint"].includes(type)) {
-      throw new Error("Loại yêu cầu không hợp lệ");
-    }
-
-    const id = uuidv4();
+    const reqType = type || "chinh-sua"; // mặc định là chỉnh sửa
     const now = new Date();
+    const id = uuidv4();
 
-    const docData = {
+    const data = {
       id,
       userId,
-      type,
-      date,
-      oldCheckIn: oldCheckIn || null,
-      oldCheckOut: oldCheckOut || null,
-      newCheckIn: newCheckIn || null,
-      newCheckOut: newCheckOut || null,
-      reason,
-      status: "pending",
+      type: reqType,           // 'chinh-sua' | 'khieu-nai' | ...
+      date,                    // 'YYYY-MM-DD'
+      shift: shift || null,    // tên ca hoặc id ca, tuỳ FE
+      cin: cin || null,        // giờ check-in đề nghị (HH:MM)
+      cout: cout || null,      // giờ check-out đề nghị
+      note: note || "",
+      status: "pending",       // pending | approved | rejected
       adminNote: null,
       resolvedBy: null,
       resolvedAt: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
-    await db.collection("requests").doc(id).set(docData);
-    return docData;
+    await db.collection(REQUESTS_COLLECTION).doc(id).set(data);
+    return data;
   },
 
-  async getByUser(userId) {
+  // ----- Lấy yêu cầu theo user -----
+    async getByUser(userId) {
+    if (!userId) throw new Error("Thiếu userId");
+
     const snap = await db
-      .collection("requests")
+      .collection(REQUESTS_COLLECTION)
       .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
       .get();
 
-    return snap.docs.map(d => d.data());
+    const list = snap.docs.map((d) => d.data() || {});
+
+    // Sắp xếp mới nhất trước, làm bằng JS để khỏi cần index
+    return list.sort((a, b) => {
+      const ca = a.createdAt || "";
+      const cb = b.createdAt || "";
+      return cb.localeCompare(ca); // desc
+    });
   },
 
+  // ----- Lấy toàn bộ yêu cầu (admin) -----
   async getAll() {
     const snap = await db
-      .collection("requests")
+      .collection(REQUESTS_COLLECTION)
       .orderBy("createdAt", "desc")
       .get();
-
-    return snap.docs.map(d => d.data());
+    return snap.docs.map((d) => d.data());
   },
 
+  // ----- Admin duyệt / từ chối yêu cầu -----
   async updateStatus(requestId, status, adminId, adminNote) {
-    if (!["approved", "rejected"].includes(status)) {
+    if (!requestId) throw new Error("Thiếu requestId");
+    if (!status || !["approved", "rejected"].includes(status)) {
       throw new Error("Trạng thái không hợp lệ");
     }
 
-    const ref = db.collection("requests").doc(requestId);
-    const doc = await ref.get();
+    const ref = db.collection(REQUESTS_COLLECTION).doc(requestId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new Error("Yêu cầu không tồn tại");
+    }
 
-    if (!doc.exists) throw new Error("Không tìm thấy yêu cầu");
+    const req = snap.data();
 
-    const request = doc.data();
+    // Nếu đã xử lý rồi thì không cho đổi nữa
+    if (req.status !== "pending") {
+      throw new Error("Yêu cầu đã được xử lý trước đó");
+    }
+
     const now = new Date();
 
-    // ---- 1) Update trạng thái request ----
     const updateData = {
       status,
       adminNote: adminNote || null,
       resolvedBy: adminId,
       resolvedAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
+
+    // Nếu Approved + type = 'chinh-sua' + có đủ date + cin + cout => cập nhật attendance
+    if (
+      status === "approved" &&
+      req.type === "chinh-sua" &&
+      req.date &&
+      req.cin &&
+      req.cout
+    ) {
+      await this._applyAttendanceEdit(req);
+    }
 
     await ref.update(updateData);
 
-    // ---- 2) APPLY REQUEST NẾU APPROVED ----
-    if (status === "approved" && request.type === "edit") {
-      const attendanceId = `${request.userId}_${request.date}`;
-      const attendanceRef = db.collection("attendance").doc(attendanceId);
-      const attSnap = await attendanceRef.get();
+    const updated = (await ref.get()).data();
+    return updated;
+  },
 
-      if (!attSnap.exists) {
-        throw new Error("Không tìm thấy bản ghi chấm công để cập nhật");
-      }
+  // ----- Nội bộ: áp dụng chỉnh sửa công vào bảng attendance -----
+  async _applyAttendanceEdit(req) {
+    const { userId, date, cin, cout, note } = req;
+    if (!userId || !date || !cin || !cout) return;
 
-      const att = attSnap.data();
+    const docId = `${userId}_${date}`;
+    const ref = db.collection(ATTENDANCE_COLLECTION).doc(docId);
+    const snap = await ref.get();
 
-      const newCheckIn = request.newCheckIn ?? att.checkInAt;
-      const newCheckOut = request.newCheckOut ?? att.checkOutAt;
+    // Ghép giờ vào ngày → Date
+    const checkInDate = new Date(`${date}T${cin}:00`);
+    const checkOutDate = new Date(`${date}T${cout}:00`);
 
-      const totalMs =
-        new Date(newCheckOut).getTime() - new Date(newCheckIn).getTime();
-
-      const hours = Math.floor(totalMs / (1000 * 60 * 60));
-      const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
-
-      const attendanceUpdate = {
-        checkInAt: newCheckIn,
-        checkOutAt: newCheckOut,
-        workTime: `${hours}h ${minutes}m`,
-        updatedAt: new Date().toISOString()
-      };
-
-      await attendanceRef.update(attendanceUpdate);
+    if (Number.isNaN(checkInDate.getTime()) || Number.isNaN(checkOutDate.getTime())) {
+      throw new Error("Giờ vào/ra không hợp lệ");
     }
 
-    return { id: requestId, ...request, ...updateData };
-  }
+    const workSeconds = Math.max(
+      0,
+      Math.floor((checkOutDate.getTime() - checkInDate.getTime()) / 1000)
+    );
+    const now = new Date();
+
+    const baseData = {
+      docId,
+      userId,
+      date,
+      checkInAt: checkInDate.toISOString(),
+      checkOutAt: checkOutDate.toISOString(),
+      workSeconds,
+      note: note || "",
+      updatedAt: now.toISOString(),
+    };
+
+    if (!snap.exists) {
+      // Nếu chưa có record thì tạo mới
+      await ref.set({
+        ...baseData,
+        createdAt: now.toISOString(),
+      });
+    } else {
+      // Nếu đã có thì cập nhật
+      await ref.update(baseData);
+    }
+  },
 };

@@ -1,19 +1,25 @@
+// middlewares/auth.middleware.js
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
 
-export const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+export default function authMiddleware(req, res, next) {
+  const header = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ message: "Missing token" });
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ success: false, message: "Missing token" });
   }
+
+  const token = header.split(" ")[1];
 
   try {
+    // DÙNG ĐÚNG BIẾN TRONG .env
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // uid + role
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
+
+    // decoded chứa { userId, role, ... }
+    req.user = decoded;
+
+    return next();
+  } catch (err) {
+    console.error("Auth error:", err);
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
-};
+}

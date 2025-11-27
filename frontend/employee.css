@@ -1,0 +1,382 @@
+:root{
+  /* palette xanh bạn yêu cầu */
+  --c1:#142850; --c2:#27496D; --c3:#0C7B93; --c4:#00A8CC; --c5:#C1DADF;
+  --ink:#1f2937; --muted:#6b7280; --bg:#F3F6F8; --card:#fff;
+  --radius:18px; --shadow:0 10px 24px rgba(0,0,0,.06);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
+
+.btn{border:0;border-radius:999px;padding:10px 16px;cursor:pointer;font-weight:700}
+.btn.primary{background:linear-gradient(135deg,var(--c4),var(--c3));color:#fff}
+.btn.outline{background:#fff;border:2px solid var(--c4);color:var(--c2)}
+.btn.close{margin-top:10px;background:#fff;border:1px solid #e5e7eb}
+
+/* Layout chính */
+.sidebar{
+  width:240px;background:var(--c1);color:#E5EEF2;position:fixed;left:18px;top:18px;bottom:18px;
+  border-radius:32px;padding:16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:14px
+}
+.brand{font-weight:800;font-size:22px;letter-spacing:.5px}
+.nav{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.nav-item{
+  text-align:left;border:0;border-radius:14px;padding:12px 14px;background:transparent;color:#d7e6ef;cursor:pointer;
+}
+.nav-item.active,.nav-item:hover{background:#0f2a4e;color:#fff;outline:1px solid rgba(255,255,255,.08)}
+.profile-mini{margin-top:auto;display:flex;gap:10px;align-items:center;background:#0f2a4e;border-radius:16px;padding:10px}
+.profile-mini .status{color:#73e6a2;font-size:12px}
+.avatar{width:40px;height:40px;border-radius:50%;object-fit:cover}
+
+.main{
+  margin-left:280px; margin-right:320px; padding:24px 24px 40px; min-height:100vh;
+}
+.activity{
+  position:fixed;right:18px;top:18px;bottom:18px;width:300px;background:#fff;border-radius:32px;
+  padding:18px;box-shadow:var(--shadow);overflow:auto
+}
+.activity h3{margin:8px 2px 14px 2px}
+.panel{background:#fff;border-radius:16px;padding:12px;margin-bottom:12px;border:1px solid #eef2f5}
+.panel h4{margin:2px 2px 8px 2px;color:var(--c2)}
+.stats{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.list li{background:linear-gradient(0deg,#fff, #fbfeff);border:1px solid #eef2f5;border-radius:14px;padding:10px}
+
+/* Content */
+.content{max-width:1100px;margin:auto}
+.row{display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:18px}
+.row.two{grid-template-columns:1fr 1fr}
+.card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px;border:1px solid #eef2f5}
+
+.welcome{display:flex;align-items:center;gap:16px}
+.avatar-lg{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--c5)}
+.welcome-text .hello{font-size:20px;font-weight:800}
+.welcome-text .dept{color:var(--muted)}
+
+.cta{display:flex;align-items:center;justify-content:space-between}
+.cta h4{margin:0}
+.cta p{color:var(--muted);margin:.25rem 0 0}
+
+.calendar-head{display:flex;justify-content:space-between;align-items:center}
+.icon-btn{border:0;background:var(--c1);color:#fff;width:34px;height:34px;border-radius:12px;cursor:pointer}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+  grid-auto-rows: 56px; /* 👉 DÒNG FIX QUAN TRỌNG */
+}
+
+.cal-grid .cell{
+  background:#fff;
+  border:1px solid #eef2f5;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+}
+
+.cal-grid .cell .day{font-weight:700}
+.cal-grid .cell.ok .mark{color:#2ecc71}
+.cal-grid .cell.no .mark{color:#ff6b6b}
+
+.legend{margin-top:8px;color:var(--muted);display:flex;gap:14px}
+.legend .ok::before{content:"✓ ";color:#2ecc71}
+.legend .no::before{content:"✗ ";color:#ff6b6b}
+
+.table-wrap{overflow:auto}
+.table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.table th{font-size:12px;color:#6b7280;text-align:left;padding:0 12px}
+.table td{background:#fff;padding:12px;border-top-left-radius:12px;border-bottom-left-radius:12px;border:1px solid #eef2f5}
+.table td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+
+.history-head{display:flex;align-items:center;justify-content:space-between}
+.filters{display:flex;gap:8px}
+.filters input{border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px}
+
+/* QR modal vuông 1:1 */
+dialog{border:0;background:transparent}
+.qr-wrap{background:#fff;border-radius:24px;padding:16px;width:min(90vw,360px);box-shadow:var(--shadow);display:grid;place-items:center}
+.qr-wrap img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px}
+
+/* responsive */
+@media (max-width:1200px){
+  .main{margin-right:18px}
+  .activity{display:none}
+}
+@media (max-width:720px){
+  .row.two{grid-template-columns:1fr}
+  .sidebar{left:10px;right:10px;bottom:auto;height:auto;position:relative;margin:10px auto;flex-direction:row;align-items:center;gap:10px;width:auto}
+  .main{margin-left:10px}
+}
+/* Active item nổi bật hơn */
+.nav-item{
+  text-align:left;border:0;border-radius:14px;padding:12px 14px;background:transparent;color:#d7e6ef;cursor:pointer;
+  transition:.15s ease;
+}
+.nav-item.active{
+  background:#0f2a4e; color:#fff; outline:2px solid rgba(255,255,255,.12);
+}
+.nav-item:hover{ background:#12335c; color:#fff }
+
+/* Ẩn route không dùng */
+.route.hidden{ display:none !important; }
+
+/* Màu active kiểu pill vàng như mockup */
+:root{
+  --active-pill:#D6B574;       /* vàng */
+  --active-pill-ink:#1a1a1a;   /* chữ tối trên nền vàng */
+}
+
+.nav-item{
+  text-align:left;border:0;border-radius:14px;padding:12px 14px;
+  background:transparent;color:#d7e6ef;cursor:pointer;transition:.15s;
+}
+.nav-item.active{
+  background:var(--active-pill);
+  color:var(--active-pill-ink);
+  box-shadow:0 2px 10px rgba(214,181,116,.35);
+}
+.nav-item:hover{ background:#12335c; color:#fff }
+/* ===== STYLE TABLE KIỂU THẺ GIỐNG TRANG MANAGER ===== */
+
+.table {
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 14px !important;    /* khoảng cách giữa các thẻ */
+}
+
+.table tbody tr {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.table td {
+    border: none !important;
+    padding: 18px 20px !important;
+    background: #fff;
+    font-size: 15px;
+}
+
+.table th {
+    text-align: left;
+    padding: 0 12px 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+/* Bo góc trái/phải cho từng dòng */
+.table td:first-child {
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+}
+.table td:last-child {
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+}
+
+/* Căn giữa cho cột Check-in / Check-out / Giờ làm */
+.table td:nth-child(2),
+.table td:nth-child(3),
+.table td:nth-child(4) {
+    text-align: center;
+}
+/* ===== CĂN THẲNG CỘT LỊCH SỬ CHẤM CÔNG ===== */
+
+/* Padding của tiêu đề là: padding: 0 12px → ta tạo padding trái 20px cho TD */
+.table td {
+    padding-left: 20px !important;
+}
+
+/* Căn cột Ngày */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+    width: 22%;
+    text-align: left;
+}
+
+/* Căn cột Check-in */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    width: 16%;
+    text-align: center;
+}
+
+/* Căn cột Check-out */
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    width: 16%;
+    text-align: center;
+}
+
+/* Căn cột Giờ làm */
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    width: 16%;
+    text-align: center;
+}
+
+/* Căn cột Ghi chú */
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    width: 14%;
+    text-align: center;
+}
+/* ===== YÊU CẦU CHỈNH SỬA / KHIẾU NẠI ===== */
+
+.muted{
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* list bên trong panel */
+.req-list{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.req-list li{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f9fbff;
+  border: 1px solid #eef2f5;
+  font-size: 14px;
+}
+
+.req-list li.empty{
+  justify-content: center;
+  font-style: italic;
+}
+
+.req-list .status{
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.req-list .status.pending{
+  background:#fef9c3;
+  color:#92400e;
+}
+.req-list .status.approved{
+  background:#dcfce7;
+  color:#166534;
+}
+.req-list .status.rejected{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+/* ===== MODAL GỬI YÊU CẦU ===== */
+#requestModal{
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+#requestModal::backdrop{
+  background: rgba(15,23,42,0.35);
+}
+
+.req-modal{
+  background:#ffffff;
+  border-radius:24px;
+  padding:20px 24px;
+  min-width:320px;
+  max-width:420px;
+  box-shadow:0 20px 45px rgba(15,23,42,0.25);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.req-modal h3{
+  margin:0 0 8px;
+}
+
+.req-modal .form-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 14px;
+}
+
+.req-modal .form-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:14px;
+}
+
+.req-modal .form-grid label.full{
+  grid-column:1/3;
+}
+
+.req-modal input,
+.req-modal select,
+.req-modal textarea{
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  padding:8px 10px;
+  font-size:14px;
+  font-family:inherit;
+}
+
+.req-modal .actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:8px;
+}
+/* Ô lịch có ca (shift) – giữ style gốc, chỉ thêm viền xanh nhẹ */
+.cal-grid .cell.shift {
+  position: relative;
+  border: 2px solid #2563eb; /* xanh dương nhưng mỏng, không phá UI */
+}
+
+/* Ô ngày tương lai (chưa tới) */
+.cal-grid .cell.future {
+  opacity: 0.6;
+}
+
+/* Badge nhỏ hiển thị số ca trong ngày (vd: "2 ca") */
+.cal-grid .shift-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Legend cho "Ngày có ca" */
+.legend .shift-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.legend .shift-tag::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2563eb;
+  display: inline-block;
+}

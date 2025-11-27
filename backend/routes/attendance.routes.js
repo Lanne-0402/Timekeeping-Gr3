@@ -1,20 +1,29 @@
-import { Router } from "express";
+import express from "express";
 import {
-  checkIn,
-  checkOut,
   getHistory,
-  getSummary
+  getSummary,
+  getUserCalendar,
+  adminGetAllAttendance,
+  adminGetOneAttendance,
+  adminUpdateAttendance
 } from "../controllers/attendance.controllers.js";
 
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import adminOnly from "../middleware/admin.middleware.js";
 
-const router = Router();
 
-router.post("/checkin", authMiddleware, checkIn);
-router.post("/checkout", authMiddleware, checkOut);
-router.get("/history/:userId", authMiddleware, getHistory);
+const router = express.Router();
 
-// NEW: tổng quan 5 ngày làm – 11 ngày nghỉ
-router.get("/summary/:userId", authMiddleware, getSummary);
+// USER — Lấy lịch sử + tổng quan
+router.get("/history", authMiddleware, getHistory);
+router.get("/summary", authMiddleware, getSummary);
+
+// ADMIN — Lấy toàn bộ + 1 ngày + chỉnh giờ
+router.get("/", authMiddleware, adminOnly, adminGetAllAttendance);
+router.get("/:docId", authMiddleware, adminOnly, adminGetOneAttendance);
+router.patch("/:docId", authMiddleware, adminOnly, adminUpdateAttendance);
+// API Calendar tổng hợp
+router.get("/calendar/:userId", authMiddleware, getUserCalendar);
+
 
 export default router;

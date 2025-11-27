@@ -1,67 +1,99 @@
-import { AuthService } from "../services/auth.service.js";
-import { UsersService } from "../services/users.service.js";
+// backend/controllers/auth.controllers.js
+import {
+  registerUserService,
+  loginUserService,
+  refreshTokenService,
+  logoutUserService,
+  sendOtpService,
+  verifyOtpService,
+  forgotPasswordService,
+} from "../services/auth.service.js";
 
-// 🔵 Register → Create User → Auto Login → Return Tokens
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "Thiếu thông tin đăng ký" });
+    const result = await registerUserService(req.body);
+    if (!result.success) {
+      return res.status(400).json(result);
     }
-
-    // 1) Tạo user mới (role mặc định = employee)
-    const newUser = await UsersService.createUser({
-      name,
-      email,
-      password,
-      role: "employee"
-    });
-
-    // 2) Login tự động
-    const loginResult = await AuthService.login(email, password);
-
-    // 3) Trả về token + user
-    res.status(201).json({
-      success: true,
-      message: "Đăng ký thành công",
-      data: loginResult.user,
-      accessToken: loginResult.accessToken,
-      refreshToken: loginResult.refreshToken
-    });
-
+    return res.json(result);
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    console.error("registerUser error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const sendOtp = async (req, res) => {
+  try {
+    const result = await sendOtpService(req.body.email);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error("sendOtp error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp, name, password } = req.body;
+    const result = await verifyOtpService({ email, otp, name, password });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error("verifyOtp error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const result = await AuthService.login(email, password);
-    res.json(result);
+    const result = await loginUserService(req.body);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("loginUser error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// giữ refresh, logout như cũ
 export const refreshToken = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-    const result = await AuthService.refresh(refreshToken);
-    res.json(result);
+    const result = await refreshTokenService(req.body.refreshToken);
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+    return res.json(result);
   } catch (err) {
-    res.status(401).json({ error: err.message });
+    console.error("refreshToken error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 export const logoutUser = async (req, res) => {
   try {
-    const { userId } = req.user;
-    const result = await AuthService.logout(userId);
-    res.json(result);
+    const result = await logoutUserService(req.body.refreshToken);
+    return res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("logoutUser error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const result = await forgotPasswordService(req.body.email);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error("forgotPassword error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
