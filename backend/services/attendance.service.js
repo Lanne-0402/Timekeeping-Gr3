@@ -91,24 +91,44 @@ export const fetchHistoryService = async (userId) => {
 // USER SUMMARY (FE dashboard)
 export const fetchSummaryService = async (userId) => {
   const now = new Date();
-  const month = now.toISOString().slice(0, 7); // yyyy-mm
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const monthKey = `${yyyy}-${mm}`;
 
-  const snap = await db
-    .collection("attendance")
+  // 1) LẤY TẤT CẢ CA TRONG THÁNG
+  const shiftSnap = await db.collection("user_shifts")
     .where("userId", "==", userId)
     .get();
 
-  let worked = 0;
-  snap.forEach((doc) => {
-    const x = doc.data();
-    if (x.date.startsWith(month)) worked++;
-  });
+  const monthShifts = shiftSnap.docs
+    .map(d => d.data().date)
+    .filter(date => date.startsWith(monthKey));
 
-  const dayToday = now.getDate();
-  const off = Math.max(0, dayToday - worked);
+  // Ngày có ca (unique)
+  const shiftDays = Array.from(new Set(monthShifts));
 
-  return { daysWorked: worked, daysOff: off };
+  // 2) LẤY ATTENDANCE TRONG THÁNG
+  const attSnap = await db.collection("attendance")
+    .where("userId", "==", userId)
+    .get();
+
+  const attDays = attSnap.docs
+    .map(d => d.data().date)
+    .filter(date => date.startsWith(monthKey));
+
+  // 3) NGÀY LÀM = ngày có ca VÀ đã check-in
+  const worked = shiftDays.filter(day => attDays.includes(day)).length;
+
+  // 4) TÍNH NGÀY NGHỈ
+  const daysInMonth = new Date(yyyy, now.getMonth() + 1, 0).getDate();
+  const off = shiftDays.length - worked;  // chỉ ngày có ca mới tính nghỉ
+
+  return { 
+    daysWorked: worked,     // ngày có ca + có check-in
+    daysOff: off            // ngày có ca nhưng không check-in
+  };
 };
+
 
 // ADMIN — Lấy toàn bộ attendance
 export const adminFetchAllAttendanceService = async () => {

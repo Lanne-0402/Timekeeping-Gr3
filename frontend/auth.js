@@ -1,7 +1,3 @@
-// ===========================================
-// AUTH FINAL – SỬA THEO ID (KHÔNG LỖI undefined)
-// ===========================================
-
 const API_BASE = "http://localhost:5000/api";
 
 // DOM
@@ -28,7 +24,26 @@ function toast(msg) {
 
 // =========================
 // Chuyển bước UI
+
+document.querySelectorAll(".view-switch").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const view = btn.dataset.view;
+        showView(view);
+    });
+});
+
+function showView(view) {
+    console.log("Switch to:", view);
+
+    document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
+
+    if (view === "login") loginForm.classList.add("active");
+    if (view === "register") registerForm.classList.add("active");
+    if (view === "otp") otpForm.classList.add("active");
+    if (view === "reset") resetForm.classList.add("active");
+}
 // =========================
+
 function goStep(step) {
   stepLogin.classList.add("hidden");
   stepRegister.classList.add("hidden");
@@ -92,102 +107,119 @@ if (loginForm) {
   });
 }
 
+   document.querySelectorAll(".view-switch").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const view = btn.dataset.view;
+            showView(view);
+        });
+    });
 
+    function showView(view) {
+        document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
 
-// =========================
-// GỬI OTP KHI ĐĂNG KÝ
-// =========================
-if (registerForm) {
-  registerForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById("registerName")?.value.trim();
-    const email = document.getElementById("registerEmail")?.value.trim();
-    const password = document.getElementById("registerPassword")?.value.trim();
-
-    if (!name || !email || !password) {
-      toast("Vui lòng nhập đầy đủ thông tin");
-      return;
+        if (view === "login") loginForm.classList.add("active");
+        if (view === "register") registerForm.classList.add("active");
+        if (view === "otp") otpForm.classList.add("active");
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-      });
 
-      const json = await res.json().catch(() => null);
+    // ==============================
+    // TOGGLE PASSWORD
+    // ==============================
+    document.querySelectorAll(".toggle-pass").forEach(btn => {
+        btn.onclick = () => {
+            const target = btn.dataset.target;
+            const input = document.getElementById(target);
 
-      if (!json || !json.success) {
-        toast(json?.message || "Không gửi được OTP");
-        return;
-      }
+            if (input.type === "password") {
+                input.type = "text";
+                btn.classList.add("show");
+            } else {
+                input.type = "password";
+                btn.classList.remove("show");
+            }
+        };
+    });
 
-      pendingRegisterData = { name, email, password };
-      goStep("otp");
 
-    } catch (err) {
-      console.error(err);
-      toast("Không thể gửi OTP");
+    const registerBtn = document.getElementById("btnRegister");
+
+registerBtn.onclick = async () => {
+  const name = document.getElementById("regName").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const pass = document.getElementById("registerPassword").value.trim();
+  const pass2 = document.getElementById("registerConfirmPassword").value.trim();
+
+  if (!name || !email || !pass || !pass2) {
+    return toast("Vui lòng nhập đầy đủ thông tin");
+  }
+
+  if (pass !== pass2) {
+    return toast("Mật khẩu xác nhận không khớp");
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) return toast(data.message);
+
+    // Lưu lại thông tin để verify
+    pendingRegister = { name, email, password: pass };
+
+    // Hiện OTP UI
+    showView("otp");
+
+    // SỬA ĐÚNG ID (otpEmailText trong HTML)
+    document.getElementById("otpEmailText").textContent = email;
+
+  } catch (err) {
+    console.error(err);
+    toast("Không gửi được OTP. Vui lòng thử lại.");
+  }
+};
+
+// ==============================
+// SUBMIT OTP (FIXED)
+// ==============================
+otpForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  if (!pendingRegister) return toast("Thiếu dữ liệu đăng ký");
+
+  const otp = document.getElementById("otpInput").value.trim();
+  if (!otp) return toast("Vui lòng nhập OTP");
+
+  const payload = {
+    email: pendingRegister.email,
+    name: pendingRegister.name,
+    password: pendingRegister.password,
+    otp
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      return toast(data.message || "OTP không hợp lệ");
     }
-  });
-}
 
+    toast("Đăng ký thành công! Hãy đăng nhập.");
 
+    showView("login");
 
-// =========================
-// VERIFY OTP → TẠO TÀI KHOẢN
-// =========================
-if (otpForm) {
-  otpForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const otp = document.getElementById("otpCode")?.value.trim();
-
-    if (!otp) {
-      toast("Vui lòng nhập mã OTP");
-      return;
-    }
-
-    try {
-      // Verify OTP
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: pendingRegisterData.email,
-          otp
-        })
-      });
-
-      const json = await res.json().catch(() => null);
-
-      if (!json || !json.success) {
-        toast(json?.message || "Mã OTP không đúng");
-        return;
-      }
-
-      // Tạo tài khoản sau khi verify thành công
-      const res2 = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pendingRegisterData)
-      });
-
-      const json2 = await res2.json().catch(() => null);
-
-      if (!json2 || !json2.success) {
-        toast(json2?.message || "Đăng ký thất bại");
-        return;
-      }
-
-      toast("Đăng ký thành công! Mời bạn đăng nhập.");
-      goStep("login");
-
-    } catch (err) {
-      console.error(err);
-      toast("Không thể xác thực OTP");
-    }
-  });
-}
+  } catch (err) {
+    console.error(err);
+    toast("Lỗi khi xác thực OTP");
+  }
+});

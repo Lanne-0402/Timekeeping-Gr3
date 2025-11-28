@@ -1,5 +1,3 @@
-// backend/services/shifts.service.js
-
 import db from "../config/firebase.js";
 import admin from "firebase-admin";
 
@@ -8,12 +6,6 @@ const Timestamp = admin.firestore.Timestamp;
 const SHIFTS_COLLECTION = "shifts";
 const USER_SHIFTS_COLLECTION = "user_shifts";
 
-/**
- * Tạo ca làm mới
- * FE có thể gửi:
- *   1) { name, startTime, endTime }
- *   2) { date, startTime, endTime }  // FE hiện tại đang dùng
- */
 export const createShiftService = async (payload = {}) => {
   const { date, name, startTime, endTime } = payload;
 

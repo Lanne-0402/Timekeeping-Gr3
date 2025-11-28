@@ -61,11 +61,7 @@
 
           <p class="switch">
             Chưa có tài khoản?
-            <button
-              type="button"
-              class="view-switch"
-              data-view="register"
-            >
+            <button type="button" class="view-switch" data-view="register">
               Đăng ký
             </button>
           </p>
@@ -126,7 +122,7 @@
             </div>
           </label>
 
-          <button type="submit" class="btn primary">Đăng ký</button>
+          <button type="button" class="btn primary" id="btnRegister">Đăng ký</button>
 
           <p class="switch">
             Đã có tài khoản?
@@ -144,6 +140,8 @@
         <form id="otpForm" class="auth-form">
           <h1>Xác thực Email</h1>
           <p class="subtitle">
+            <p>Email: <span id="otpEmailText"></span></p>
+
             Nhập mã OTP được gửi tới email của bạn để hoàn tất đăng ký.
           </p>
 
