@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Face Scan Camera</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="frame.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Camera thật -->
+  <video id="camera" autoplay playsinline></video>
+
+  <!-- Overlay + frame -->
+  <div class="overlay"></div>
+
+  <div class="scan-frame">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="icon-btn">&times;</div>
+    <div class="icon-btn">i</div>
+  </div>
+
+  <!-- Tip -->
+  <div class="tip" id="tip">
+    <div class="tip-icon">!</div>
+    <span>Giữ khuôn mặt trong khung và đứng yên để hệ thống nhận diện.</span>
+    <span class="tip-close" onclick="document.getElementById('tip').style.display='none'">&times;</span>
+  </div>
+
+  <!-- Chỉ còn nút chụp ở giữa -->
+  <div class="bottom-bar">
+    <div class="shutter-wrapper">
+      <div class="shutter" onclick="takeShot()"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Bật camera
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+      });
+      document.getElementById("camera").srcObject = stream;
+    } catch (err) {
+      alert("Không mở được camera. Hãy cấp quyền truy cập!");
+      console.error(err);
+    }
+  }
+
+  function takeShot() {
+    alert("Bạn đã nhấn chụp! Sau này tích hợp xử lý tại đây.");
+  }
+
+  startCamera();
+</script>
+
+</body>
+</html>
