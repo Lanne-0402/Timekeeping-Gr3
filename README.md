@@ -17,7 +17,7 @@ https://nodejs.org/
 
 ```bash
 git clone https://github.com/Lanne-0401/Timekeeping-Gr3.git
-cd MiniApp-Timekeeping-Gr3
+cd Timekeeping-Gr3
 ```
 ## 3. Cài đặt Backend
 ```bash
