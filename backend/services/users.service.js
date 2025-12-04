@@ -4,9 +4,6 @@ import db from "../config/firebase.js";
 const USERS_COLLECTION = "users";
 const ADMIN_ROLES = ["admin", "System Admin", "manager"];
 
-// Trạng thái làm việc "nghỉ việc" dùng để cho phép xoá
-const WORKSTATUS_RESIGNED = "nghi_viec";
-
 export const UsersService = {
   // Lấy danh sách user (ẩn admin/system admin)
   async getUsers() {
@@ -53,8 +50,7 @@ export const UsersService = {
         "email",
         "dept",
         "position",
-        "workStatus",    // đang làm / nghỉ phép / nghỉ việc...
-        "accountStatus", // active / inactive
+        "status", // active / inactive
       ];
 
       for (const key of adminAllowedFields) {
@@ -110,7 +106,7 @@ export const UsersService = {
 
     const user = userSnap.data();
 
-    if (user.workStatus !== WORKSTATUS_RESIGNED) {
+    if (user.status !== "inactive") {
       throw new Error("Chỉ được xoá nhân viên đã nghỉ việc");
     }
 

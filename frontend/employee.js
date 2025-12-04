@@ -3,60 +3,95 @@ const API_BASE = "http://localhost:5000/api";
 
 // ===================== GLOBAL STATE =====================
 let historyData = [];
-let requests = [];
 let userShifts = [];
 let currentUser = null;
 let token = null;
 let userId = null;
 
 // ===================== MAIN =====================
+// ===================== MAIN =====================
 document.addEventListener("DOMContentLoaded", () => {
   const rawUser = localStorage.getItem("tkUser");
   if (!rawUser) return (window.location.href = "auth.html");
 
   const user = JSON.parse(rawUser);
-  if (user.user.role !== "employee") return (window.location.href = "auth.html");
+  if (user.user.role !== "user") return (window.location.href = "auth.html");
+
+  // --- Lấy DOM an toàn ---
+  const empName = document.getElementById("empName");
+  const empDept = document.getElementById("empDept");
+  const miniName = document.getElementById("miniName");
+  const empLogout = document.getElementById("empLogout");
+
+  const btnFaceCheckin  = document.getElementById("btnFaceCheckin");
+  const btnFaceCheckout = document.getElementById("btnFaceCheckout");
+  const btnFaceEnroll   = document.getElementById("btnFaceEnroll");   // nút cũ trên trang Home (có thể bị xoá)
+  const btnEnrollFaceID = document.getElementById("btnEnrollFaceID"); // nút mới trong Cài đặt
+
+  const btnFilter = document.getElementById("btnFilter");
+  const fromDate  = document.getElementById("fromDate");
+  const toDate    = document.getElementById("toDate");
 
   // 🔥 GÁN GLOBAL
-  token = user.token;
+  token  = user.token;
   userId = user.user.id;
 
-  if (window.FaceID) window.FaceID.init({ jwtToken: token, uid: userId });
+  if (window.FaceID) {
+    window.FaceID.init({ jwtToken: token, uid: userId });
+  }
 
   // Profile
-  empName.textContent = user.user.name || "User";
-  empDept.textContent = user.user.dept || "Không rõ";
-  empAvatar.src = miniAvatar.src = "assets/v.jpg";
+  if (empName)  empName.textContent  = user.user.name || "User";
+  if (empDept)  empDept.textContent  = user.user.dept || "Không rõ";
+  if (miniName) miniName.textContent = user.user.name;
 
-  empLogout.onclick = () => {
-    localStorage.removeItem("tkUser");
-    window.location.href = "auth.html";
-  };
+  // Logout
+  if (empLogout) {
+    empLogout.onclick = () => {
+      localStorage.removeItem("tkUser");
+      window.location.href = "auth.html";
+    };
+  }
 
+  // Nav left
   document.querySelectorAll(".nav-item").forEach((btn) => {
     const route = btn.dataset.route;
     if (!route) return;
     btn.onclick = () => goto(route, btn);
   });
 
-  btnFaceCheckin.onclick = () => window.FaceID?.checkIn();
-  btnFaceCheckout.onclick = () => window.FaceID?.checkOut();
-  btnFaceEnroll.onclick = () => window.FaceID?.enroll();
+  // FaceID buttons (chỉ gán nếu tồn tại)
+  if (btnFaceCheckin) {
+    btnFaceCheckin.onclick = () => window.FaceID?.checkIn();
+  }
+  if (btnFaceCheckout) {
+    btnFaceCheckout.onclick = () => window.FaceID?.checkOut();
+  }
+  // nút cũ trên trang Home (có thể đã xoá khỏi HTML, không sao)
+  if (btnFaceEnroll) {
+    btnFaceEnroll.onclick = () => window.FaceID?.enroll();
+  }
+  // nút mới trong tab Cài đặt
+  if (btnEnrollFaceID) {
+    btnEnrollFaceID.onclick = () => window.FaceID?.enroll();
+  }
 
+  // Load dữ liệu + build calendar
   loadSummaryAndHistory(userId, token);
-  loadMyRequests(userId, token);
 
-  btnFilter.onclick = () => {
-    const f = fromDate.value;
-    const t = toDate.value;
-    let d = historyData;
-    if (f) d = d.filter((x) => x.date >= f);
-    if (t) d = d.filter((x) => x.date <= t);
-    renderHistory(d);
-  };
-
-  setupRequestForm(userId, token);
+  // Filter lịch sử
+  if (btnFilter && fromDate && toDate) {
+    btnFilter.onclick = () => {
+      const f = fromDate.value;
+      const t = toDate.value;
+      let d = historyData;
+      if (f) d = d.filter((x) => x.date >= f);
+      if (t) d = d.filter((x) => x.date <= t);
+      renderHistory(d);
+    };
+  }
 });
+
 
 // ===================== LOAD SUMMARY + HISTORY + SHIFTS =====================
 async function loadSummaryAndHistory(userId, token) {
@@ -99,24 +134,40 @@ async function loadMyShifts(userId, token) {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    if (!data.success || !Array.isArray(data.data)) return (userShifts = []);
+    if (!data.success || !Array.isArray(data.data)) {
+      userShifts = [];
+      return;
+    }
 
-    userShifts = data.data.map((s) => {
-      if (!s.date) return s;
-      let d = s.date.trim();
+    // Lấy shift chi tiết theo shiftId
+    const detailed = [];
 
-      // 🔥 Normalize dd/mm/yyyy
-      if (d.includes("/")) {
-        const [dd, mm, yyyy] = d.split("/");
-        d = `${yyyy}-${mm}-${dd}`;
+    for (const rec of data.data) {
+      const r = await fetch(`${API_BASE}/shifts/${rec.shiftId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await r.json();
+      if (json.success && json.data) {
+        let s = json.data;
+
+        // chuẩn hoá ngày yyyy-mm-dd
+        let d = s.date.trim();
+        if (d.includes("/")) {
+          const [dd, mm, yyyy] = d.split("/");
+          d = `${yyyy}-${mm}-${dd}`;
+        }
+
+        detailed.push({ ...s, date: d });
       }
+    }
 
-      return { ...s, date: d };
-    });
+    userShifts = detailed;  // GÁN SHIFT THẬT
   } catch (err) {
     userShifts = [];
   }
 }
+
+
 
 // ===================== BUILD CALENDAR =====================
 let currentDate = new Date();
@@ -206,6 +257,12 @@ function buildCalendar(date) {
           <div class='mark'>&nbsp;</div>
       `;
     }
+    if (hasShift) {
+        cell.style.cursor = "pointer";
+        cell.addEventListener("click", () => {
+            openShiftModal(hasShift[0]);
+        });
+    }
     calendarGrid.appendChild(cell);
     
   }
@@ -276,46 +333,6 @@ function renderActivity() {
   daysOff.textContent = off;
 }
 
-// ===================== REQUEST FORM =====================
-function setupRequestForm(userId, token) {
-  btnRequest.onclick = () => requestModal.showModal();
-  reqCancel.onclick = () => requestModal.close();
-
-  requestForm.onsubmit = async (e) => {
-    e.preventDefault();
-    const payload = {
-      type: reqType.value,
-      date: reqDate.value,
-      shift: reqShift.value,
-      cin: reqIn.value,
-      cout: reqOut.value,
-      note: reqNote.value,
-    };
-
-    try {
-      const res = await fetch(`${API_BASE}/requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!data.success) return alert(data.message || "Gửi yêu cầu thất bại");
-
-      alert("Đã gửi yêu cầu. Quản lý sẽ xem xét.");
-      requestModal.close();
-      requestForm.reset();
-
-      loadMyRequests(userId, token);
-    } catch (err) {
-      alert("Không kết nối được server!");
-    }
-  };
-}
-
 // ===================== ROUTER =====================
 function goto(route, btn) {
   document.querySelectorAll(".route").forEach((s) =>
@@ -327,3 +344,94 @@ function goto(route, btn) {
 
   if (route === "history") renderHistory(historyData);
 }
+// =============================
+// ĐỔI MẬT KHẨU
+// =============================
+const changePassForm = document.getElementById("changePassForm");
+if (changePassForm) {
+  changePassForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const cur = document.getElementById("curPass").value.trim();
+    const n1 = document.getElementById("newPass").value.trim();
+    const n2 = document.getElementById("newPass2").value.trim();
+    const msg = document.getElementById("changePassMsg");
+
+    msg.className = "";
+    msg.textContent = "";
+
+    if (n1 !== n2) {
+      msg.textContent = "Mật khẩu mới không khớp.";
+      msg.classList.add("error");
+      return;
+    }
+
+    if (n1.length < 6) {
+      msg.textContent = "Mật khẩu mới tối thiểu 6 ký tự.";
+      msg.classList.add("error");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: cur,
+          newPassword: n1,
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      msg.textContent = "Đổi mật khẩu thành công!";
+      msg.classList.add("success");
+
+      changePassForm.reset();
+    } catch (err) {
+      msg.textContent = err.message || "Lỗi hệ thống, thử lại.";
+      msg.classList.add("error");
+    }
+  });
+}
+// =============================
+// ĐĂNG KÝ FACEID
+// =============================
+const btnEnroll = document.getElementById("btnEnrollFaceID");
+if (btnEnroll) {
+  btnEnroll.onclick = () => {
+    FaceID.enroll();
+  };
+}
+// =========================
+// Toggle hiển / ẩn mật khẩu
+// =========================
+document.querySelectorAll(".toggle-pw").forEach(icon => {
+  icon.addEventListener("click", () => {
+    const targetId = icon.dataset.target;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+
+    // optional: đổi độ đậm cho dễ nhìn
+    icon.style.opacity = isPassword ? 1 : 0.7;
+  });
+});
+function openShiftModal(shift) {
+  document.getElementById("modalShiftCode").textContent = shift.shiftCode || "Không có";
+  document.getElementById("modalShiftName").textContent = shift.name || "Không có";
+  document.getElementById("modalShiftDate").textContent = shift.date || "";
+  document.getElementById("modalShiftTime").textContent = `${shift.startTime} - ${shift.endTime}`;
+  
+  document.getElementById("shiftDetailModal").classList.remove("hidden");
+}
+
+document.getElementById("closeShiftDetail").onclick = () => {
+  document.getElementById("shiftDetailModal").classList.add("hidden");
+};

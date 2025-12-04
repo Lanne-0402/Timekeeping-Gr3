@@ -24,16 +24,31 @@ export const handleCheckInService = async (userId) => {
 
   const now = new Date().toISOString();
 
-  await ref.set({
-    docId,
-    userId,
-    date,
-    checkInAt: now,
-    checkOutAt: null,
-    workSeconds: 0,
-    createdAt: now,
-    updatedAt: now
-  });
+  // Lấy ca của ngày hôm đó
+const shiftSnap = await db.collection("user_shifts")
+  .where("userId", "==", userId)
+  .where("date", "==", date)
+  .limit(1)
+  .get();
+
+let shiftInfo = null;
+if (!shiftSnap.empty) {
+  shiftInfo = shiftSnap.docs[0].data();
+}
+
+await ref.set({
+  docId,
+  userId,
+  date,
+  shiftId: shiftInfo?.shiftId || null,
+  shiftName: shiftInfo?.shiftName || null,
+  checkInAt: now,
+  checkOutAt: null,
+  workSeconds: 0,
+  createdAt: now,
+  updatedAt: now
+});
+
 
   return { success: true, data: { docId } };
 };

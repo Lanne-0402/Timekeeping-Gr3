@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { generateEmployeeCode } from "../utils/idGenerator.js";
 
 // =====================
 // GMAIL SMTP
@@ -76,15 +77,25 @@ export const registerUserService = async ({ name, email, password, role }) => {
   if (!name || !email || !password)
     return { success: false, message: "Thiếu thông tin bắt buộc" };
 
-  const snap = await db.collection(USERS_COLLECTION).where("email", "==", email).get();
+  const snap = await db.collection(USERS_COLLECTION)
+    .where("email", "==", email)
+    .get();
+
   if (!snap.empty)
     return { success: false, message: "Email đã được sử dụng" };
 
+  // Hash password
   const hash = await bcrypt.hash(password, 10);
+
+  // Tạo mã NV001, NV002...
+  const employeeCode = await generateEmployeeCode();
+
+  // Document id random (giữ để tránh phá hệ thống)
   const userRef = db.collection(USERS_COLLECTION).doc();
 
   await userRef.set({
-    id: userRef.id,
+    id: userRef.id,               // ID thật (random) – dùng để join
+    employeeCode,                 // MÃ NV GỌN: “NV001”
     name,
     email,
     passwordHash: hash,
@@ -97,7 +108,13 @@ export const registerUserService = async ({ name, email, password, role }) => {
     updatedAt: new Date().toISOString(),
   });
 
-  return { success: true, data: { id: userRef.id } };
+  return {
+    success: true,
+    data: {
+      id: userRef.id,
+      employeeCode,
+    }
+  };
 };
 
 // =====================
@@ -129,11 +146,10 @@ export const verifyOtpService = async ({ email, otp, name, password }) => {
     name,
     email,
     passwordHash: hash,
-    role: "employee",
+    role: "user",
     dept: "",
-    position: "",
-    workStatus: "dang_lam",
-    accountStatus: "active",
+    position: "employee",
+    status: "active",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -220,22 +236,105 @@ export const logoutUserService = async (refreshToken) => {
 export const forgotPasswordService = async (email) => {
   if (!email) return { success: false, message: "Thiếu email" };
 
-  const snap = await db.collection(USERS_COLLECTION).where("email", "==", email).limit(1).get();
+  // Kiểm tra email đã có user chưa
+  const snap = await db
+    .collection(USERS_COLLECTION)
+    .where("email", "==", email)
+    .limit(1)
+    .get();
+
+  if (snap.empty) {
+    return { success: false, message: "Email chưa đăng ký" };
+  }
+
+  // Tạo OTP mới
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Lưu OTP vào collection dùng chung với đăng ký
+  await db.collection(OTP_COLLECTION).doc(email).set({
+    email,
+    otp,
+    purpose: "reset",             // phân biệt với đăng ký nếu cần
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 phút
+  });
+
+  // Gửi OTP qua Gmail SMTP (transporter đã cấu hình sẵn)
+  await transporter.sendMail({
+    from: "timekeepinggr3@gmail.com",
+    to: email,
+    subject: "Mã OTP đặt lại mật khẩu",
+    html: `
+      <p>Mã OTP đặt lại mật khẩu của bạn là:</p>
+      <h2>${otp}</h2>
+      <p>Mã có hiệu lực trong 5 phút.</p>
+    `,
+  });
+
+  return { success: true, message: "Đã gửi OTP qua email!" };
+};
+export const checkResetOtpService = async ({ email, otp }) => {
+  if (!email || !otp)
+    return { success: false, message: "Thiếu dữ liệu" };
+
+  const ref = db.collection(OTP_COLLECTION).doc(email);
+  const doc = await ref.get();
+
+  if (!doc.exists)
+    return { success: false, message: "OTP không tồn tại hoặc đã hết hạn" };
+
+  const data = doc.data();
+
+  if (data.otp !== otp)
+    return { success: false, message: "OTP không đúng" };
+
+  if (data.expiresAt < Date.now())
+    return { success: false, message: "OTP đã hết hạn" };
+
+  return { success: true, message: "OTP hợp lệ" };
+};
+
+export const resetPasswordService = async ({ email, otp, newPassword }) => {
+  if (!email || !otp || !newPassword)
+    return { success: false, message: "Thiếu dữ liệu" };
+
+  // Kiểm tra OTP
+  const otpRef = db.collection(OTP_COLLECTION).doc(email);
+  const otpDoc = await otpRef.get();
+
+  if (!otpDoc.exists)
+    return { success: false, message: "OTP không tồn tại hoặc đã hết hạn" };
+
+  const otpData = otpDoc.data();
+
+  if (otpData.otp !== otp)
+    return { success: false, message: "OTP không đúng" };
+
+  if (otpData.expiresAt < Date.now())
+    return { success: false, message: "OTP đã hết hạn" };
+
+  // Tìm user theo email
+  const snap = await db
+    .collection(USERS_COLLECTION)
+    .where("email", "==", email)
+    .limit(1)
+    .get();
 
   if (snap.empty)
-    return { success: false, message: "Email chưa đăng ký" };
+    return { success: false, message: "Không tìm thấy người dùng" };
 
-  const userDoc = snap.docs[0];
-  const newPasswordPlain = crypto.randomBytes(4).toString("hex");
+  const userRef = snap.docs[0].ref;
 
-  const hash = await bcrypt.hash(newPasswordPlain, 10);
+  // Hash mật khẩu mới
+  const hash = await bcrypt.hash(newPassword, 10);
 
-  await userDoc.ref.update({
+  await userRef.update({
     passwordHash: hash,
     updatedAt: new Date().toISOString(),
   });
 
-  console.log("New password for", email, "=", newPasswordPlain);
+  // Xoá OTP sau khi dùng
+  await otpRef.delete();
 
-  return { success: true, message: "Đã tạo mật khẩu mới (xem console)." };
+  return { success: true, message: "Đặt lại mật khẩu thành công" };
 };

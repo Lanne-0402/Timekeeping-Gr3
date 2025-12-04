@@ -1,21 +1,25 @@
-import express from "express";
-import adminOnly from "../middleware/admin.middleware.js";
+import { Router } from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
-
 import {
   createReport,
   getReports,
   updateReportStatus,
   exportReportPDF,
+  getSummary,
+  exportSummaryPDF,   // thêm dòng này
 } from "../controllers/reports.controllers.js";
 
-const router = express.Router();
+const router = Router();
 
-router.post("/", authMiddleware, adminOnly, createReport);
-router.get("/", authMiddleware, adminOnly, getReports);
-router.patch("/:reportId", authMiddleware, adminOnly, updateReportStatus);
+// CRUD report cũ
+router.post("/", authMiddleware, createReport);
+router.get("/", authMiddleware, getReports);
+router.patch("/:id/status", authMiddleware, updateReportStatus);
 
-// Export PDF
-router.get("/:reportId/pdf", authMiddleware, adminOnly, exportReportPDF);
+// ĐẶT CÁC ROUTE CỤ THỂ TRƯỚC
+router.get("/summary", authMiddleware, getSummary);
+router.get("/summary/pdf", authMiddleware, exportSummaryPDF);
+// Sau cùng mới tới route động theo id
+router.get("/:id/pdf", authMiddleware, exportSummaryPDF);
 
 export default router;

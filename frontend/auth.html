@@ -48,13 +48,10 @@
               <span>Ghi nhớ đăng nhập</span>
             </label>
 
-            <button
-              type="button"
-              class="link-small view-switch"
-              data-view="reset"
-            >
+            <button type="button" class="link-small view-switch" data-view="forgot">
               Quên mật khẩu?
             </button>
+
           </div>
 
           <button type="submit" class="btn primary">Đăng nhập</button>
@@ -126,8 +123,7 @@
 
           <p class="switch">
             Đã có tài khoản?
-            <button
-              type="button"
+            <button type="button"
               class="view-switch"
               data-view="login"
             >
@@ -169,102 +165,84 @@
             </button>
           </p>
         </form>
+        <!-- ========== FORGOT PASSWORD FORM ========== -->
+        <form id="form-forgot" class="auth-form hidden">
 
-        <!-- ========== QUÊN MẬT KHẨU: NHẬP EMAIL NHẬN MÃ ========== -->
-        <form id="resetForm" class="auth-form">
-          <h1>Quên mật khẩu</h1>
-          <p class="subtitle">
-            Nhập email để nhận mã đặt lại mật khẩu.
-          </p>
+          <h2 class="title">Quên mật khẩu</h2>
+          <p class="subtitle">Nhập email để nhận mã OTP đặt lại mật khẩu.</p>
 
-          <div
-            id="resetError"
-            class="error-msg"
-            style="display: none"
-          ></div>
+          <div class="input-group">
+              <label for="fpEmail">Email đăng ký</label>
+              <input id="fpEmail" type="email" placeholder="nhanvien@company.com" required />
+          </div>
 
-          <label>
-            <span>Email</span>
-            <input
-              id="resetEmail"
-              type="email"
-              required
-              placeholder="nhanvien@company.com"
-            />
-          </label>
+          <p id="fpError" class="error-message"></p>
 
-          <button type="submit" class="btn primary">Gửi mã</button>
+          <button type="submit" class="btn primary full">Gửi mã OTP</button>
 
-          <p class="switch">
-            Quay lại đăng nhập?
-            <button
-              type="button"
-              class="view-switch"
-              data-view="login"
-            >
-              Đăng nhập
-            </button>
-          </p>
-        </form>
+          <div class="switch-text">
+              <span class="view-switch" data-view="login">← Quay lại đăng nhập</span>
+          </div>
 
-        <!-- ========== ĐẶT LẠI MẬT KHẨU MỚI ========== -->
-        <form id="newPassForm" class="auth-form">
-          <h1>Đặt lại mật khẩu</h1>
-          <p class="subtitle">
-            Vui lòng nhập mật khẩu mới cho tài khoản của bạn.
-          </p>
+      </form>
 
-          <div
-            id="newPassError"
-            class="error-msg"
-            style="display: none"
-          ></div>
 
-          <label>
-            <span>Mật khẩu mới</span>
-            <input
-              id="newPass"
-              type="password"
-              required
-              placeholder="Nhập mật khẩu mới"
-            />
-          </label>
+      <form id="form-forgot-otp" class="auth-form hidden">
 
-          <label>
-            <span>Nhập lại mật khẩu mới</span>
-            <input
-              id="newPass2"
-              type="password"
-              required
-              placeholder="Nhập lại mật khẩu mới"
-            />
-          </label>
+        <h2 class="title">Nhập mã OTP</h2>
+        <p class="subtitle">Chúng tôi đã gửi mã OTP tới email của bạn.</p>
 
-          <button type="submit" class="btn primary">Lưu mật khẩu</button>
+        <div class="input-group">
+            <label for="fpOtp">Mã OTP</label>
+            <input id="fpOtp" maxlength="6" placeholder="••••••" required />
+        </div>
 
-          <p class="switch">
-            Quay lại đăng nhập?
-            <button
-              type="button"
-              class="view-switch"
-              data-view="login"
-            >
-              Đăng nhập
-            </button>
-          </p>
-        </form>
-      </div>
-    </div>
+        <p id="fpOtpError" class="error-message"></p>
+
+        <button type="submit" class="btn primary full">Xác nhận</button>
+
+        <button type="button" id="btnResendForgotOtp" class="btn text full">
+            Gửi lại OTP
+        </button>
+
+        <div class="switch-text">
+            <span class="view-switch" data-view="login">← Quay lại đăng nhập</span>
+        </div>
+
+    </form>
+
+
+      <form id="form-reset-pass" class="auth-form hidden">
+        <h2 class="title">Đặt lại mật khẩu</h2>
+
+        <div class="input-group">
+            <label for="fpNewPass1">Mật khẩu mới</label>
+            <input id="fpNewPass1" type="password" placeholder="********" required />
+        </div>
+
+        <div class="input-group">
+            <label for="fpNewPass2">Nhập lại mật khẩu</label>
+            <input id="fpNewPass2" type="password" placeholder="********" required />
+        </div>
+
+        <p id="fpResetError" class="error-message"></p>
+
+        <button type="submit" class="btn primary full">Xác nhận</button>
+
+        <div class="switch-text">
+            <span class="view-switch" data-view="login">← Quay lại đăng nhập</span>
+        </div>
+
+    </form>
+
+
 
     <!-- POPUP FACEID ĐƯỢC ĐẶT NGOÀI .auth-card ĐỂ KHÔNG CHE FORM -->
     <div id="faceidPopup" class="popup hidden">
       <div class="popup-content">
         <h3>🎉 Xác thực email thành công!</h3>
-        <p>Hãy đăng ký FaceID để chấm công.</p>
-        <button id="startFaceID" class="btn primary">Bắt đầu</button>
       </div>
     </div>
-
     <script src="auth.js"></script>
   </body>
 </html>

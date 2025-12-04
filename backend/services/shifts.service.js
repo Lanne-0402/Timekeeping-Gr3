@@ -1,5 +1,6 @@
 import db from "../config/firebase.js";
 import admin from "firebase-admin";
+import { generateShiftCode } from "../utils/idGenerator.js";
 
 const Timestamp = admin.firestore.Timestamp;
 
@@ -27,13 +28,18 @@ export const createShiftService = async (payload = {}) => {
 
   const shiftRef = db.collection(SHIFTS_COLLECTION).doc();
 
+  // Mã ca làm thân thiện
+  const shiftCode = await generateShiftCode();
+
   const shiftData = {
-    id: shiftRef.id,
+    id: shiftRef.id,          // vẫn giữ ID random
+    shiftCode,                // VD: CA001
     name: finalName,
     startTime,
     endTime,
     createdAt: Timestamp.now(),
   };
+
 
   // Nếu có ngày thì lưu luôn
   if (date) shiftData.date = date;
@@ -150,4 +156,100 @@ export const getUserShiftsService = async (userId) => {
     const dbb = b.date || "";
     return dbb.localeCompare(da); // desc
   });
+};
+export const getShiftByIdService = async (shiftId) => {
+  if (!shiftId) throw new Error("Thiếu ID ca");
+
+  const snap = await db.collection("shifts").doc(shiftId).get();
+  if (!snap.exists) throw new Error("Ca không tồn tại");
+
+  return snap.data();
+};
+export const getEmployeesInShiftService = async (shiftId) => {
+  const snap = await db
+    .collection("user_shifts")
+    .where("shiftId", "==", shiftId)
+    .get();
+
+  const list = [];
+
+  for (const doc of snap.docs) {
+    const row = doc.data();
+    const user = await db.collection("users").doc(row.userId).get();
+    list.push({
+      id: row.userId,
+      name: user.exists ? user.data().name : "Unknown"
+    });
+  }
+
+  return list;
+};
+export const updateShiftService = async (shiftId, payload) => {
+  const { date, startTime, endTime, name } = payload;
+
+  const updateData = {};
+
+  if (date) updateData.date = date;
+  if (startTime) updateData.startTime = startTime;
+  if (endTime) updateData.endTime = endTime;
+  if (name) updateData.name = name;
+
+  await db.collection("shifts").doc(shiftId).update(updateData);
+
+  return true;
+};
+export const addEmployeeToShiftService = async (shiftId, userId) => {
+  if (!shiftId || !userId) {
+    throw new Error("Thiếu shiftId hoặc userId");
+  }
+
+  // Lấy thông tin ca để biết ngày
+  const shiftDoc = await db.collection("shifts").doc(shiftId).get();
+  if (!shiftDoc.exists) throw new Error("Ca không tồn tại");
+
+  const shift = shiftDoc.data();
+
+  // Kiểm tra nhân viên đã có trong ca chưa
+  const snap = await db.collection("user_shifts")
+    .where("shiftId", "==", shiftId)
+    .where("userId", "==", userId)
+    .get();
+
+  if (!snap.empty) {
+    throw new Error("Nhân viên đã được gán vào ca này rồi");
+  }
+
+  // Tạo record mới
+  const ref = db.collection("user_shifts").doc();
+  await ref.set({
+    id: ref.id,
+    shiftId,
+    userId,
+    date: shift.date, // dùng date của ca
+    assignedAt: Timestamp.now(),
+  });
+
+  return true;
+};
+export const removeEmployeeFromShiftService = async (shiftId, userId) => {
+  if (!shiftId || !userId) {
+    throw new Error("Thiếu shiftId hoặc userId");
+  }
+
+  const snap = await db.collection("user_shifts")
+    .where("shiftId", "==", shiftId)
+    .where("userId", "==", userId)
+    .get();
+
+  if (snap.empty) {
+    throw new Error("Nhân viên không tồn tại trong ca này");
+  }
+
+  const batch = db.batch();
+
+  snap.forEach(doc => batch.delete(doc.ref));
+
+  await batch.commit();
+
+  return true;
 };

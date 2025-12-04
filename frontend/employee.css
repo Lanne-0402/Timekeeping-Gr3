@@ -23,12 +23,11 @@ body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(-
 .brand{font-weight:800;font-size:22px;letter-spacing:.5px}
 .nav{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .nav-item{
-  text-align:left;border:0;border-radius:14px;padding:12px 14px;background:transparent;color:#d7e6ef;cursor:pointer;
+  text-align:left;border:0;border-radius:14px;padding:12px 12px;background:transparent;color:#d7e6ef;cursor:pointer;
 }
 .nav-item.active,.nav-item:hover{background:#0f2a4e;color:#fff;outline:1px solid rgba(255,255,255,.08)}
 .profile-mini{margin-top:auto;display:flex;gap:10px;align-items:center;background:#0f2a4e;border-radius:16px;padding:10px}
 .profile-mini .status{color:#73e6a2;font-size:12px}
-.avatar{width:40px;height:40px;border-radius:50%;object-fit:cover}
 
 .main{
   margin-left:280px; margin-right:320px; padding:24px 24px 40px; min-height:100vh;
@@ -51,7 +50,6 @@ body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(-
 .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px;border:1px solid #eef2f5}
 
 .welcome{display:flex;align-items:center;gap:16px}
-.avatar-lg{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--c5)}
 .welcome-text .hello{font-size:20px;font-weight:800}
 .welcome-text .dept{color:var(--muted)}
 
@@ -67,6 +65,13 @@ body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(-
   gap: 4px;
   margin-top: 10px;
   grid-auto-rows: 56px; /* 👉 DÒNG FIX QUAN TRỌNG */
+}
+.calendar {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
 .cal-grid .cell{
@@ -228,118 +233,7 @@ dialog{border:0;background:transparent}
     width: 14%;
     text-align: center;
 }
-/* ===== YÊU CẦU CHỈNH SỬA / KHIẾU NẠI ===== */
 
-.muted{
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* list bên trong panel */
-.req-list{
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.req-list li{
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f9fbff;
-  border: 1px solid #eef2f5;
-  font-size: 14px;
-}
-
-.req-list li.empty{
-  justify-content: center;
-  font-style: italic;
-}
-
-.req-list .status{
-  font-size: 12px;
-  border-radius: 999px;
-  padding: 4px 10px;
-}
-
-.req-list .status.pending{
-  background:#fef9c3;
-  color:#92400e;
-}
-.req-list .status.approved{
-  background:#dcfce7;
-  color:#166534;
-}
-.req-list .status.rejected{
-  background:#fee2e2;
-  color:#b91c1c;
-}
-
-/* ===== MODAL GỬI YÊU CẦU ===== */
-#requestModal{
-  border: none;
-  padding: 0;
-  background: transparent;
-}
-#requestModal::backdrop{
-  background: rgba(15,23,42,0.35);
-}
-
-.req-modal{
-  background:#ffffff;
-  border-radius:24px;
-  padding:20px 24px;
-  min-width:320px;
-  max-width:420px;
-  box-shadow:0 20px 45px rgba(15,23,42,0.25);
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.req-modal h3{
-  margin:0 0 8px;
-}
-
-.req-modal .form-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px 14px;
-}
-
-.req-modal .form-grid label{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  font-size:14px;
-}
-
-.req-modal .form-grid label.full{
-  grid-column:1/3;
-}
-
-.req-modal input,
-.req-modal select,
-.req-modal textarea{
-  border-radius:12px;
-  border:1px solid #e5e7eb;
-  padding:8px 10px;
-  font-size:14px;
-  font-family:inherit;
-}
-
-.req-modal .actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  margin-top:8px;
-}
 /* Ô lịch có ca (shift) – giữ style gốc, chỉ thêm viền xanh nhẹ */
 .cal-grid .cell.shift {
   position: relative;
@@ -379,4 +273,117 @@ dialog{border:0;background:transparent}
   border-radius: 999px;
   background: #2563eb;
   display: inline-block;
+}
+/* ===== SETTINGS FORM ===== */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.settings-form input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  font-size: 15px;
+}
+/* Wrapper + icon ẩn/hiện mật khẩu trong Cài đặt */
+.pw-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pw-wrapper input {
+  width: 100%;
+  padding-right: 40px; /* chừa chỗ cho icon mắt */
+}
+
+.toggle-pw {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  user-select: none;
+}
+
+.toggle-pw:hover {
+  opacity: 1;
+}
+
+#changePassMsg {
+  text-align: center;
+  font-weight: 600;
+}
+
+#changePassMsg.success {
+  color: #16a34a;
+}
+
+#changePassMsg.error {
+  color: #dc2626;
+}
+/* Ẩn nút reveal password mặc định của Edge */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 14px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: modalFade 0.25s ease;
+}
+
+.modal-content h2 {
+  margin-bottom: 15px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-row {
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-close {
+  margin-top: 20px;
+  width: 100%;
+  padding: 10px;
+  background: #0E7490;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
 }

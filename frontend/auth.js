@@ -7,11 +7,16 @@ const otpForm = document.getElementById("otpForm");
 const stepLogin = document.getElementById("stepLogin");
 const stepRegister = document.getElementById("stepRegister");
 const stepOtp = document.getElementById("stepOtp");
+const formForgot = document.getElementById("form-forgot");
+const formForgotOtp = document.getElementById("form-forgot-otp");
+const formResetPass = document.getElementById("form-reset-pass");
 
 const toRegisterBtn = document.getElementById("toRegisterBtn");
 const toLoginBtn = document.getElementById("toLoginBtn");
 
 let pendingRegisterData = null; // lưu info đăng ký để verify
+let lastForgotEmail = "";
+let lastForgotOtp = "";
 
 
 // =========================
@@ -115,11 +120,17 @@ if (loginForm) {
     });
 
     function showView(view) {
-        document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
+         document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
 
         if (view === "login") loginForm.classList.add("active");
         if (view === "register") registerForm.classList.add("active");
         if (view === "otp") otpForm.classList.add("active");
+
+        // NEW
+        if (view === "forgot") formForgot.classList.add("active");
+        if (view === "forgot-otp") formForgotOtp.classList.add("active");
+        if (view === "reset-pass") formResetPass.classList.add("active");
+
     }
 
 
@@ -222,4 +233,85 @@ otpForm.addEventListener("submit", async (e) => {
     console.error(err);
     toast("Lỗi khi xác thực OTP");
   }
+});
+
+// STEP 1: GỬI OTP
+formForgot.onsubmit = async (e) => {
+  e.preventDefault();
+
+  const email = fpEmail.value.trim();
+  lastForgotEmail = email;
+
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await res.json();
+  if (!data.success) return fpError.innerText = data.message;
+
+  showView("forgot-otp");
+};
+formForgotOtp.onsubmit = async (e) => {
+  e.preventDefault();
+
+  const otp = fpOtp.value.trim();
+  lastForgotOtp = otp;
+
+  const res = await fetch(`${API_BASE}/auth/reset-password/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: lastForgotEmail, otp })
+  });
+
+  const data = await res.json();
+  if (!data.success) return fpOtpError.innerText = data.message;
+
+  showView("reset-pass");
+};
+
+
+formResetPass.onsubmit = async (e) => {
+  e.preventDefault();
+
+  const p1 = fpNewPass1.value.trim();
+  const p2 = fpNewPass2.value.trim();
+
+  if (p1 !== p2) {
+    fpResetError.innerText = "Mật khẩu không trùng khớp.";
+    return;
+  }
+
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: lastForgotEmail,
+      otp: lastForgotOtp,
+      newPassword: p1
+    })
+  });
+
+  const data = await res.json();
+  if (!data.success) return fpResetError.innerText = data.message;
+
+  alert("Đặt lại mật khẩu thành công!");
+  showView("login");
+};
+// =========================
+// Toggle hiển / ẩn mật khẩu
+// =========================
+document.querySelectorAll(".toggle-pw").forEach(icon => {
+  icon.addEventListener("click", () => {
+    const targetId = icon.dataset.target;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+
+    // optional: đổi độ đậm cho dễ nhìn
+    icon.style.opacity = isPassword ? 1 : 0.7;
+  });
 });

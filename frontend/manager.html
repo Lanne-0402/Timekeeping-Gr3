@@ -6,17 +6,17 @@
   <title>Quản lý | Chấm công</title>
 
   <link rel="stylesheet" href="manager.css"/>
-
 <!-- Google Maps JS -->
   <script
     async
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCYw975FBYyM0AcZMTe33A1xH8Aw9Y-wz8&libraries=places">
   </script>
-  <script defer src="manager.js"></script>
+  
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
-
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script defer src="manager.js"></script>
 </head>
 
 <body>
@@ -27,15 +27,12 @@
       <button class="nav-item active" data-route="employees">Quản lý nhân viên</button>
       <button class="nav-item" data-route="shifts">Quản lý ca làm</button>
       <button class="nav-item" data-route="reports">Thống kê &amp; báo cáo</button>
-      <button class="nav-item" data-route="requests">Duyệt yêu cầu</button>
       <button class="nav-item" data-route="location">Cài đặt vị trí</button>
     </nav>
 
     <div class="profile-mini">
-      <img class="avatar" src="assets/jungkook.jpg"/>
       <div>
         <div class="name">Manager</div>
-        <div class="status">Online</div>
       </div>
     </div>
 
@@ -49,8 +46,7 @@
       <h4>Hôm nay</h4>
       <ul class="stats">
         <li><span id="mgrTotalEmployees">0</span> nhân viên</li>
-        <li><span id="mgrTotalAssignments">0</span> lượt gán ca</li>
-        <li><span id="mgrPendingRequests">0</span> yêu cầu chờ duyệt</li>
+        <li><span id="mgrTotalAssignments">0</span> lượt tạo ca</li>
       </ul>
     </section>
   </aside>
@@ -66,7 +62,9 @@
             <h2>Quản lý nhân viên</h2>
             <div class="filters">
               <input id="empSearch" type="text" placeholder="Tìm theo tên hoặc email">
-              <button id="btnReloadEmployees" class="pill-btn">Tải lại</button>
+              <button id="btnReloadEmployees" class="icon-refresh">
+                <i class="fa-solid fa-rotate-right"></i>
+              </button>
             </div>
           </div>
 
@@ -79,7 +77,6 @@
                   <th>Email</th>
                   <th>Bộ phận</th>
                   <th>Trạng thái</th>
-                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +99,8 @@
               <input id="shiftEnd" type="time">
 
               <button id="btnCreateShift" class="pill-btn">Tạo ca</button>
+              
+
             </div>
           </div>
 
@@ -113,8 +112,6 @@
                   <th>Tên ca</th>
                   <th>Giờ bắt đầu</th>
                   <th>Giờ kết thúc</th>
-                  <th>Ghi chú</th>
-                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,30 +163,53 @@
       <section id="reports" class="route hidden">
         <div class="card">
           <div class="toolbar">
-            <h2>Thống kê & báo cáo</h2>
+            <h2>Thống kê & Báo cáo</h2>
+
             <div class="filters">
-              <input id="repTitle" type="text" placeholder="Tiêu đề báo cáo">
-              <input id="repFrom" type="date">
-              <input id="repTo" type="date">
-              <button id="btnCreateReport" class="pill-btn">Tạo báo cáo</button>
+              <label for="repMonth">Chọn tháng:</label>
+              <input id="repMonth" type="month" value="2025-11">
+              <button id="btnReloadReports" class="icon-refresh">
+                  <i class="fa-solid fa-rotate-right"></i>
+              </button>
+              <button id="btnLoadSummary" class="pill-btn">Xuất báo cáo</button>
             </div>
           </div>
 
-          <div class="table-wrap">
-            <table id="reportTable">
-              <thead>
-                <tr>
-                  <th>Tiêu đề</th>
-                  <th>Khoảng thời gian</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày tạo</th>
-                  <th>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- JS fill -->
-              </tbody>
-            </table>
+         <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 20px;">
+
+            <div class="stat-card clickable" id="gotoShiftTab">
+              <h3>Tổng ca</h3>
+              <p id="sumTotal">0</p>
+            </div>
+
+            <div class="stat-card clickable" id="gotoPresentList">
+              <h3>Có mặt</h3>
+              <p id="sumPresent">0</p>
+            </div>
+
+            <div class="stat-card clickable" id="gotoAbsentList">
+              <h3>Vắng</h3>
+              <p id="sumAbsent">0</p>
+            </div>
+
+            <div class="stat-card clickable" id="gotoRate">
+              <h3>Tỉ lệ đi làm</h3>
+              <p id="sumRate">0%</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chi tiết theo nhân viên / ca làm -->
+        <div class="card" style="margin-top:20px;">
+          <div class="toolbar">
+            <h3>Chi tiết</h3>
+            <div class="filters">
+              <input id="employeeSearchBox" type="text" placeholder="Tìm nhân viên..." class="search-box"/>
+            </div>
+          </div>
+
+          <div id="employeeSummaryTable" class="table-wrap" style="margin-bottom:20px;">
+            <!-- Bảng tổng quan theo nhân viên -->
           </div>
         </div>
       </section>
@@ -244,7 +264,7 @@
           <!-- Leaflet Map -->
           <div id="map" style="
               width:100%;
-              height:380px;
+              height:450px;
               border-radius:10px;
               margin-bottom:12px;
           "></div>
@@ -263,5 +283,121 @@
     </section>
     
   </main>
+  <!-- EDIT EMPLOYEE MODAL -->
+  <div id="editEmpModal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Sửa thông tin nhân viên</h2>
+
+      <label>Họ tên</label>
+      <input id="editEmpName" type="text" />
+
+      <label>Email</label>
+      <input id="editEmpEmail" type="text" />
+
+      <label>Bộ phận</label>
+      <input id="editEmpDept" type="text" />
+
+      <label>Trạng thái tài khoản</label>
+      <select id="editEmpStatus">
+        <option value="active">Đang hoạt động</option>
+        <option value="inactive">Đã khoá</option>
+      </select>
+
+      <div class="modal-actions">
+        <button id="btnDeleteEmp" class="pill-btn outline">Xóa tài khoản</button>
+
+        <div style="display:flex; gap:10px;">
+          <button id="btnSaveEmp" class="pill-btn outline">Lưu</button>
+          <button id="btnCloseEditEmp" class="pill-btn outline">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="empDetailModal" class="modal hidden">
+    <div class="modal-content" style="width:800px; max-height:90vh; overflow:auto;">
+      <h2 id="detailEmpName">Chi tiết nhân viên</h2>
+
+      <div id="empDetailTableWrap" class="table-wrap" style="margin-top:16px;">
+        <!-- JS fill -->
+      </div>
+
+      <div style="text-align:right; margin-top:16px;">
+        <button id="btnCloseEmpDetail" class="pill-btn outline">Đóng</button>
+      </div>
+    </div>
+  </div>
+  <div id="presentModal" class="modal hidden">
+    <div class="modal-content" style="width:450px;">
+      <h3>Danh sách nhân viên đi làm</h3>
+      <ul id="presentList"></ul>
+      <div class="modal-footer">
+        <button id="closePresent" class="pill-btn outline">Đóng</button>
+      </div>
+    </div>
+  </div>
+  <div id="absentModal" class="modal hidden">
+  <div class="modal-content" style="width:450px;">
+      <h3>Danh sách nhân viên vắng</h3>
+      <ul id="absentList"></ul>
+      <div class="modal-footer">
+        <button id="closeAbsent" class="pill-btn outline">Đóng</button>
+      </div>
+    </div>
+  </div>
+  <div id="rateModal" class="modal hidden">
+  <div class="modal-content" style="width:450px;">
+      <h3>Phân tích tỉ lệ đi làm</h3>
+      <ul id="rateList"></ul>
+      <div class="modal-footer">
+        <button id="closeRate" class="pill-btn outline">Đóng</button>
+      </div>
+    </div>
+  </div>
+<!-- ==============================
+      MODAL CHỈNH SỬA CA LÀM
+     ============================== -->
+<div id="editShiftModal" class="modal hidden">
+  <div class="modal-content shift-editor">
+
+    <h2>Chỉnh sửa ca làm</h2>
+
+    <div class="form-group">
+      <label>Ngày làm</label>
+      <input type="date" id="editShiftDate" class="input">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group half">
+        <label>Giờ bắt đầu</label>
+        <input type="time" id="editShiftStart" class="input">
+      </div>
+      <div class="form-group half">
+        <label>Giờ kết thúc</label>
+        <input type="time" id="editShiftEnd" class="input">
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Nhân viên trong ca</h3>
+      <div id="editShiftEmployees" class="employee-list"></div>
+    </div>
+
+    <div class="section">
+      <h3>Thêm nhân viên</h3>
+      <div class="form-row">
+        <select id="editShiftAddEmployee" class="input"></select>
+        <button class="btn small" onclick="confirmAddEmployee()">+ Thêm</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveShiftChanges()">Lưu thay đổi</button>
+      <button class="btn outline" onclick="closeEditShiftModal()">Đóng</button>
+    </div>
+
+  </div>
+</div>
+
+
 </body>
 </html>

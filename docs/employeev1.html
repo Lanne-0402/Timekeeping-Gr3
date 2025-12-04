@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Nhân viên | Chấm công</title>
+  <link rel="stylesheet" href="employee.css"/>
+  <script defer src="employee.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"> Timekeeping </div>
+    <nav class="nav">
+      <button class="nav-item active" data-route="home">Trang chủ</button>
+      <button class="nav-item" data-route="history">Lịch sử chấm công</button>
+      <button class="nav-item" data-route="settings">Cài đặt</button>
+    </nav>
+    <div class="profile-mini">
+     
+      <div>
+        <div class="name"> Nguyễn Ngọc Gia Hân</div>
+        <div class="status">Active</div>
+      </div>
+    </div>
+    <button id="empLogout" class="nav-item" style="margin-top:12px;">
+  Đăng xuất
+</button>
+
+  </aside>
+
+  <main class="main">
+    <!-- Cột phải: hoạt động -->
+    <aside class="activity">
+      <h3>Hoạt động</h3>
+
+      <section class="panel">
+        <h4>Tổng quan</h4>
+        <ul class="stats">
+          <li><span id="daysWorked">0</span> ngày làm</li>
+          <li><span id="daysOff">0</span> ngày nghỉ</li>
+        </ul>
+      </section>
+
+       <!-- YÊU CẦU CHỈNH SỬA / KHIẾU NẠI -->
+  <section class="panel">
+    <h4>Yêu cầu chỉnh sửa / khiếu nại</h4>
+    <button id="btnRequest" class="btn primary" style="width:100%;margin-bottom:10px;">
+      Gửi yêu cầu
+    </button>
+    <ul id="reqList" class="req-list">
+      <!-- JS (renderRequests) sẽ fill vào đây -->
+    </ul>
+  </section>
+</aside>
+    </aside>
+
+    <!-- Nội dung chính -->
+    <section class="content">
+      <!-- Trang chủ -->
+      <section id="home" class="route">
+        <!-- hàng 1 -->
+        <div class="row">
+          <div class="card welcome">
+            <div class="welcome-text">
+              <div class="hello">Xin chào, <span id="empName">Nguyễn Ngọc Gia Hân</span></div>
+              <div class="dept">Bộ phận: <strong id="empDept">Kinh doanh</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- hàng 2 -->
+        <div class="row two">
+          <div class="card cta">
+            <div>
+              <h4>Check-in</h4>
+              <p>Điểm danh đầu ca.</p>
+            </div>
+            <button class="btn primary checkin">Mở QR</button>
+          </div>
+
+          <div class="card cta">
+            <div>
+              <h4>Check-out</h4>
+              <p>Kết thúc ca làm.</p>
+            </div>
+            <button class="btn outline checkout">Mở QR</button>
+          </div>
+        </div>
+
+        <!-- hàng 3: Lịch tháng -->
+        <div class="row">
+          <div class="card calendar">
+            <div class="calendar-head">
+              <h4 id="calTitle">Lịch tháng</h4>
+              <div class="cal-actions">
+                <button id="prevM" class="icon-btn">‹</button>
+                <button id="nextM" class="icon-btn">›</button>
+              </div>
+            </div>
+            <div id="calendarGrid" class="cal-grid"></div>
+            <div class="legend">
+              <span class="ok">✓ đã chấm</span>
+              <span class="no">✗ chưa chấm</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lịch sử (route riêng) -->
+      <section id="history" class="route hidden">
+        <div class="card">
+          <div class="history-head">
+            <h3>Lịch sử chấm công</h3>
+            <div class="filters">
+              <input id="fromDate" type="date"/>
+              <input id="toDate" type="date"/>
+              <button id="btnFilter" class="btn">Lọc</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="histTable">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Giờ làm</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+    <!-- Cài đặt (đổi mật khẩu) -->
+
+<section id="settings" class="route hidden">
+  <div class="settings-wrap">
+    <h2>Cài đặt tài khoản</h2>
+    <p class="subtitle">Đổi mật khẩu đăng nhập của bạn .</p>
+
+    <form id="changePassForm" class="settings-form">
+      <label>
+        <span>Mật khẩu hiện tại</span>
+        <input id="curPass" type="password" placeholder="Nhập mật khẩu hiện tại" required>
+      </label>
+
+      <label>
+        <span>Mật khẩu mới</span>
+        <input id="newPass" type="password" placeholder="Tối thiểu 6 ký tự" required>
+      </label>
+
+      <label>
+        <span>Nhập lại mật khẩu mới</span>
+        <input id="newPass2" type="password" placeholder="Nhập lại mật khẩu mới" required>
+      </label>
+
+      <button class="btn primary" type="submit">Lưu mật khẩu</button>
+
+      <div id="changePassMsg"></div>
+    </form>
+  </div>
+</section>
+
+  </main>
+  <!-- MODAL GỬI YÊU CẦU CHỈNH SỬA / KHIẾU NẠI -->
+<dialog id="requestModal">
+  <form id="requestForm" class="req-modal" method="dialog">
+    <h3>Gửi yêu cầu chỉnh sửa / khiếu nại</h3>
+
+    <div class="form-grid">
+      <label>Loại yêu cầu
+        <select id="reqType">
+          <option value="chinh-sua">Chỉnh sửa chấm công</option>
+          <option value="khieu-nai">Khiếu nại khác</option>
+        </select>
+      </label>
+
+      <label>Ngày
+        <input type="date" id="reqDate" required>
+      </label>
+
+      <label>Ca làm
+        <select id="reqShift">
+          <option value="Sáng">Sáng</option>
+          <option value="Chiều">Chiều</option>
+          <option value="Khác">Khác</option>
+        </select>
+      </label>
+
+      <label>Giờ check-in (nếu cần)
+        <input type="time" id="reqIn">
+      </label>
+
+      <label>Giờ check-out (nếu cần)
+        <input type="time" id="reqOut">
+      </label>
+
+      <label class="full">Nội dung
+        <textarea id="reqNote" rows="3" required
+          placeholder="Mô tả vấn đề: chấm sai giờ, quên check-in..."></textarea>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="reqCancel" class="btn close">Hủy</button>
+      <button type="submit" class="btn primary">Gửi yêu cầu</button>
+    </div>
+  </form>
+</dialog>
+
+  <!-- QR modal -->
+  <dialog id="qrModal">
+    <div class="qr-wrap">
+      <img src="qr.jpg" alt="QR" />
+      <button class="btn close" onclick="document.getElementById('qrModal').close()">Đóng</button>
+    </div>
+  </dialog>
+</body>
+</html>

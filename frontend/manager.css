@@ -63,6 +63,7 @@ body{
   color:#fff;
   font-weight:700;
   cursor:pointer;
+  gap:10px;
 }
 
 /* ===== LAYOUT CHUNG ===== */
@@ -123,13 +124,6 @@ body{
   color:#73e6a2;
   font-size:12px;
 }
-.avatar{
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  object-fit:cover;
-}
-
 .main{
   margin-left:280px;
   margin-right:320px;
@@ -170,7 +164,7 @@ body{
 
 /* content chính */
 .content{
-  max-width:1100px;
+  max-width:1200px;
   margin:auto;
 }
 .row{
@@ -225,13 +219,13 @@ body{
 .table {
   width:100%;
   border-collapse:separate !important;
-  border-spacing:0 14px !important;   /* khoảng cách giữa các hàng */
+  border-spacing:0 10px !important;   /* khoảng cách giữa các hàng */
 }
 
 /* Mỗi hàng là 1 card */
 .table tbody tr {
   background:#fff;
-  border-radius:18px;
+  border-radius:10px;
   box-shadow:0 4px 14px rgba(0,0,0,0.05);
   overflow:hidden;
 }
@@ -239,10 +233,14 @@ body{
 /* từng ô */
 .table td {
   border:none !important;
-  padding:18px 20px !important;
+  padding:14px 10px !important;
   background:#fff;
   font-size:15px;
   vertical-align:middle;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* header */
@@ -252,6 +250,7 @@ body{
   font-size:13px;
   color:#6b7280;
   font-weight:600;
+  white-space: nowrap;
 }
 
 /* bo góc trái */
@@ -456,7 +455,7 @@ dialog{
 
 /* tăng độ rộng cột Tên */
 #shiftTable td:nth-child(2){
-  width:220px !important;
+  width:200px !important;
 }
 
 /* căn giữa tiêu đề và nội dung cột Ca làm */
@@ -474,7 +473,7 @@ dialog{
 #shiftTable td:nth-child(4){
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:5px;
   align-items:center;   /* căn giữa ngang */
 }
 
@@ -482,7 +481,7 @@ dialog{
 #shiftTable .chip-wrap{
   display:flex;
   flex-wrap:wrap;
-  gap:8px;
+  gap:5px;
   justify-content:center;   /* chip nằm giữa ô */
 }
 /* ==== MINI CALENDAR FOR MANAGER ==== */
@@ -530,49 +529,19 @@ dialog{
   font-weight:700;
 }
 .date-input {
-  width: 200px;
-  padding: 14px 16px;
+  width: 50px;
+  padding: 24px 20px;
   border-radius: 24px;
   border: 1px solid #3b4148;
   background: #111418;
-  color: #fff;
   font-size: 16px;
 }
-
 .flatpickr-calendar {
   border-radius: 12px !important;
   background: #1a1d21 !important;
   color: white !important;
 }
-.modal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
 
-.modal.hidden { display: none; }
-
-.modal-content {
-  background: #111418;
-  padding: 20px;
-  border-radius: 15px;
-  width: 340px;
-  box-shadow: var(--shadow);
-}
-/* Modal cải tiến */
-.assign-modal {
-  width: 480px;
-  background: #1d1f24;
-  color: #fff;
-  padding: 24px;
-  border-radius: 14px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
-  animation: modalFade 0.2s ease-out;
-}
 
 /* fade-in */
 @keyframes modalFade {
@@ -638,4 +607,304 @@ dialog{
 
 .pill-btn.red {
   background: #c65353;
+}
+.icon-refresh {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+  cursor: pointer;
+}
+
+.icon-refresh:hover {
+  transform: scale(1.12);
+}
+
+/* Animation quay 1 vòng */
+.spin-once {
+  animation: spinOnce 0.45s linear;
+}
+
+@keyframes spinOnce {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.stat-card {
+  background: #ffffff10;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #ffffff15;
+}
+
+.stat-card h3 {
+  margin: 0;
+  font-size: 16px;
+  opacity: .9;
+}
+
+.stat-card p {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: bold;
+}
+.emp-card {
+  background: #fff;
+  border-radius: 5px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.emp-info h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.emp-role {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.emp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+}
+
+.emp-stat strong {
+  font-size: 15px;
+  display: block;
+}
+
+.emp-stat span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.emp-detail-btn {
+  width: 100%;
+  font-size: 14px;
+  padding: 8px 0;
+  border-radius: 8px;
+}
+.search-box {
+  width: 260px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+}
+
+.search-box:focus {
+  border-color: var(--c4);
+  box-shadow: 0 0 0 2px rgba(0,150,200,0.15);
+}
+.clickable {
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.clickable:hover {
+  background: #f2f8ff;
+}
+#gotoShiftTab {
+  cursor: pointer;
+  pointer-events: auto;
+}
+#shiftStart, #shiftEnd {
+  padding: 0px 12px;
+}
+.stat-card.clickable #gotoShiftTab {
+  pointer-events: auto;
+}
+.modal ul {
+  margin-top: 10px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+#gotoPresentList,
+#gotoAbsentList,
+#gotoRate,
+#gotoShiftTab {
+    position: relative !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+}
+/* FIX: đảm bảo stat-card bấm được */
+.stat-card.clickable {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 20 !important;
+}
+/* Đảm bảo layer của stats grid cao hơn overlay */
+.stats-grid {
+  position: relative;
+  z-index: 15;
+}
+/* Vùng phủ modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Ẩn modal */
+.modal.hidden {
+  display: none !important;
+}
+
+/* Hộp modal */
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 14px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: modalFade 0.25s ease;
+}
+
+/* Animation modal */
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Input trong modal */
+.modal-content input,
+.modal-content select {
+  padding: 8px 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  width: 100%;
+  font-size: 14px;
+}
+
+/* Footer nút modal */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.modal-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+/* ======== Edit Shift Modal ======== */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+.modal.hidden {
+  display: none;
+}
+
+.modal-content.shift-editor {
+  width: 480px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+/* Inputs */
+.input {
+  width: 30%;
+  padding: 24px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  font-size: 15px;
+  margin-top: 6px;
+}
+
+/* Layout rows */
+.form-group {
+  margin-bottom: 14px;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+.half {
+  flex: 1;
+}
+/* Employee list */
+.employee-list div {
+  background: #f1f5f9;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.employee-list span {
+  font-size: 15px;
+  font-weight: 500;
+}
+.employee-list button {
+  padding: 4px 10px !important;
+}
+
+/* Modal footer buttons */
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+.gray-btn {
+  padding: 10px 18px;
+  background: #eaeaea;
+  color: #333;
+  border-radius: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.gray-btn:hover {
+  background: #d5d5d5;
+}
+#editShiftEmployees div {
+  background: #f1f5f9;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
 }

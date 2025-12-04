@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Quản lý | Chấm công</title>
+
+  <!-- Dùng lại CSS của trang nhân viên -->
+  <link rel="stylesheet" href="manager.css"/>
+
+  <!-- Một ít CSS riêng cho trang quản lý -->
+
+  <script defer src="manager.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">Timekeeping Admin</div>
+    <nav class="nav">
+      <button class="nav-item active" data-route="employees">Quản lý nhân viên</button>
+      <button class="nav-item" data-route="shifts">Quản lý ca làm</button>
+      <button class="nav-item" data-route="reports">Thống kê &amp; báo cáo</button>
+      <button class="nav-item" data-route="requests">Duyệt yêu cầu</button>
+      <button class="nav-item" data-route="settings">Cài đặt</button>
+    </nav>
+    <div class="profile-mini">
+      <div>
+        <div class="name">Manager</div>
+        <div class="status">Online</div>
+      </div>
+    </div>
+    <button id="mgrLogout" class="nav-item" style="margin-top:12px;">
+  Đăng xuất
+</button>
+  </aside>
+
+  <!-- Cột phải -->
+  <aside class="activity">
+    <h3>Tổng quan</h3>
+    <section class="panel">
+      <h4>Hôm nay</h4>
+      <ul class="stats">
+        <li><span id="mgrTotalEmployees">0</span> nhân viên</li>
+        <li><span id="mgrTotalAssignments">0</span> lượt gán ca</li>
+        <li><span id="mgrPendingRequests">0</span> yêu cầu chờ duyệt</li>
+      </ul>
+    </section>
+  </aside>
+
+  <!-- Nội dung chính -->
+  <main class="main">
+    <section class="content">
+
+      <!-- 1. Quản lý nhân viên -->
+      <section id="employees" class="route">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Quản lý nhân viên</h2>
+            <div class="filters">
+              <input type="text" id="empSearch" placeholder="Tìm theo tên / mã...">
+              <select id="empDeptFilter">
+                <option value="">Tất cả bộ phận</option>
+                <option value="Kinh doanh">Kinh doanh</option>
+                <option value="Kỹ thuật">Kỹ thuật</option>
+                <option value="Nhân sự">Nhân sự</option>
+              </select>
+              <button id="btnEmpNew" class="pill-btn">+ Thêm nhân viên</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="empTable">
+              <thead>
+                <tr>
+                  <th>Mã NV</th>
+                  <th>Tên</th>
+                  <th>Bộ phận</th>
+                  <th>Chức vụ</th>
+                  <th>Trạng thái</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Modal thêm / sửa nhân viên -->
+      <dialog id="empDialog">
+  <form id="empForm" class="emp-modal" method="dialog">
+    <h3 id="empFormTitle">Thêm nhân viên</h3>
+
+    <div class="form-grid">
+      <label class="full">Mã nhân viên
+        <input type="text" id="empId" required>
+      </label>
+
+      <label class="full">Họ tên
+        <input type="text" id="empNameInput" required>
+      </label>
+
+      <label>Bộ phận
+        <select id="empDept">
+          <option value="Kinh doanh">Kinh doanh</option>
+          <option value="Kỹ thuật">Kỹ thuật</option>
+          <option value="Nhân sự">Nhân sự</option>
+        </select>
+      </label>
+
+      <label>Chức vụ
+        <input type="text" id="empRole" placeholder="VD: Nhân viên, Trưởng nhóm...">
+      </label>
+
+      <label class="full">Trạng thái
+        <select id="empStatus">
+          <option value="active">Đang làm</option>
+          <option value="inactive">Nghỉ việc</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="empCancel" class="btn close">Hủy</button>
+      <button type="submit" class="btn primary">Lưu</button>
+    </div>
+  </form>
+</dialog>
+
+
+      <!-- 2. Quản lý ca làm -->
+      <section id="shifts" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Quản lý ca làm</h2>
+            <div class="filters">
+              <select id="shiftEmpSelect">
+                <!-- JS fill nhân viên -->
+              </select>
+              <select id="shiftTypeSelect">
+                <!-- JS fill loại ca -->
+              </select>
+              <button id="btnAssignShift" class="pill-btn">+ Gán ca</button>
+            </div>
+          </div>
+
+          <p style="color:var(--muted);margin-bottom:10px">
+            Mỗi nhân viên sẽ được gán 1 hoặc nhiều ca (Sáng, Chiều...). Bạn có thể gỡ từng ca bằng cách bấm dấu ✕ trên thẻ ca.
+          </p>
+
+          <div class="table-wrap">
+            <table class="table" id="shiftTable">
+              <thead>
+                <tr>
+                  <th>Mã NV</th>
+                  <th>Tên</th>
+                  <th>Bộ phận</th>
+                  <th>Ca làm</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Thống kê & báo cáo chấm công -->
+      <section id="reports" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Thống kê &amp; báo cáo chấm công</h2>
+            <div class="filters">
+              <input type="month" id="reportMonth">
+              <select id="reportDept">
+                <option value="">Tất cả bộ phận</option>
+                <option value="Kinh doanh">Kinh doanh</option>
+                <option value="Kỹ thuật">Kỹ thuật</option>
+                <option value="Nhân sự">Nhân sự</option>
+              </select>
+              <button id="btnExport" class="btn outline">Xuất báo cáo</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="reportTable">
+              <thead>
+                <tr>
+                  <th>Nhân viên</th>
+                  <th>Bộ phận</th>
+                  <th>Ngày làm</th>
+                  <th>Ngày nghỉ</th>
+                  <th>Đi muộn / về sớm</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Duyệt yêu cầu -->
+      <section id="requests" class="route hidden">
+        <div class="card">
+          <div class="toolbar">
+            <h2>Duyệt yêu cầu chỉnh sửa / khiếu nại</h2>
+            <div class="filters">
+              <select id="reqFilterStatus">
+                <option value="">Tất cả trạng thái</option>
+                <option value="pending">Chờ duyệt</option>
+                <option value="approved">Đã duyệt</option>
+                <option value="rejected">Từ chối</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="reqTable">
+              <thead>
+                <tr>
+                  <th>Nhân viên</th>
+                  <th>Ngày</th>
+                  <th>Ca</th>
+                  <th>Loại</th>
+                  <th>Nội dung</th>
+                  <th>Trạng thái</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+            <!-- 4. Duyệt yêu cầu -->
+      <section id="requests" class="route hidden">
+        <!-- ... giữ nguyên code duyệt yêu cầu ... -->
+      </section>
+
+      <!-- 5. Cài đặt tài khoản -->
+      <section id="settings" class="route hidden">
+        <div class="card">
+          <h2>Cài đặt tài khoản</h2>
+          <p class="muted">
+            Đổi mật khẩu đăng nhập của bạn.
+          </p>
+
+          <form id="mgrChangePassForm" class="settings-form">
+            <label>
+              <span>Mật khẩu hiện tại</span>
+              <input id="mgrOldPass" type="password"
+                     required
+                     placeholder="Nhập mật khẩu hiện tại">
+            </label>
+
+            <label>
+              <span>Mật khẩu mới</span>
+              <input id="mgrNewPass" type="password"
+                     required
+                     placeholder="Tối thiểu 6 ký tự">
+            </label>
+
+            <label>
+              <span>Nhập lại mật khẩu mới</span>
+              <input id="mgrNewPass2" type="password"
+                     required
+                     placeholder="Nhập lại mật khẩu mới">
+            </label>
+
+            <div id="mgrPassError" class="error-msg" style="display:none;"></div>
+
+            <button type="submit" class="btn primary">Lưu mật khẩu</button>
+          </form>
+        </div>
+      </section>
+
+    </section>
+  </main>
+</body>
+</html>

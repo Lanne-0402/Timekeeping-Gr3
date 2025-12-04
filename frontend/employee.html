@@ -17,15 +17,13 @@
       <button class="nav-item" data-route="history">Lịch sử chấm công</button>
     </nav>
     <div class="profile-mini">
-      <img id="miniAvatar" class="avatar" src="assets/v.jpg" alt="avatar"/>
       <div>
-        <div class="name"> Họ và tên</div>
+        <div class="name" id="miniName"> Họ và tên</div>
         <div class="status">Active</div>
       </div>
     </div>
-    <button id="empLogout" class="nav-item" style="margin-top:12px;">
-      Đăng xuất
-    </button>
+    <button class="nav-item" data-route="settings">Cài đặt</button>
+    <button class="nav-item" id="empLogout" >Đăng xuất</button>
   </aside>
 
   <main class="main">
@@ -40,17 +38,6 @@
           <li><span id="daysOff">0</span> ngày nghỉ</li>
         </ul>
       </section>
-
-      <!-- YÊU CẦU CHỈNH SỬA / KHIẾU NẠI -->
-      <section class="panel">
-        <h4>Yêu cầu chỉnh sửa / khiếu nại</h4>
-        <button id="btnRequest" class="btn primary" style="width:100%;margin-bottom:10px;">
-          Gửi yêu cầu
-        </button>
-        <ul id="reqList" class="req-list">
-          <!-- JS (renderRequests) sẽ fill vào đây -->
-        </ul>
-      </section>
     </aside>
 
     <!-- Nội dung chính -->
@@ -60,13 +47,10 @@
         <!-- hàng 1 -->
         <div class="row">
           <div class="card welcome">
-            <img id="empAvatar" class="avatar-lg" src="assets/v.jpg" alt="avatar"/>
             <div class="welcome-text">
               <div class="hello">Xin chào, <span id="empName">Họ và tên</span></div>
               <div class="dept">Bộ phận: <strong id="empDept"></strong></div>
-              <button class="btn outline" id="btnFaceEnroll" style="margin-top:10px;">
-                Đăng ký gương mặt
-              </button>
+
             </div>
           </div>
         </div>
@@ -102,8 +86,8 @@
             </div>
             <div id="calendarGrid" class="cal-grid"></div>
             <div class="legend">
-              <span class="ok">✓ đã chấm</span>
-              <span class="no">✗ chưa chấm</span>
+              <span class="ok">đã chấm</span>
+              <span class="no">chưa chấm</span>
               <span class="shift-tag">Ngày có ca</span>
             </div>
           </div>
@@ -138,54 +122,61 @@
           </div>
         </div>
       </section>
+       <!-- ================= CÀI ĐẶT ================= -->
+        <section id="settings" class="route hidden">
+          <div class="card" style="max-width: 520px;">
+            <h2>Cài đặt</h2>
+            <p style="color:var(--muted); margin-bottom:20px;">
+              Cập nhật mật khẩu và đăng ký FaceID để chấm công nhanh hơn.
+            </p>
+
+            <!-- ===== ĐỔI MẬT KHẨU ===== -->
+            <form id="changePassForm" class="settings-form">
+              <label>
+                <span>Mật khẩu hiện tại</span>
+                <div class="pw-wrapper">
+                  <input id="curPass" type="password" required>
+                  <span class="toggle-pw" data-target="curPass">👁</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Mật khẩu mới</span>
+                <div class="pw-wrapper">
+                  <input id="newPass" type="password" minlength="6" required>
+                  <span class="toggle-pw" data-target="newPass">👁</span>
+                </div>
+              </label>
+
+              <label>
+                <span>Nhập lại mật khẩu mới</span>
+                <div class="pw-wrapper">
+                  <input id="newPass2" type="password" minlength="6" required>
+                  <span class="toggle-pw" data-target="newPass2">👁</span>
+                </div>
+              </label>
+
+              <button type="submit" class="btn outline" style="width:40%; margin-top:8px;">
+                Lưu mật khẩu
+              </button>
+
+              <div id="changePassMsg" style="margin-top:12px; font-size:14px;"></div>
+            </form>
+
+
+            <!-- ===== FACEID REGISTER ===== -->
+            <h3 style="margin-bottom:6px;">Đăng ký FaceID</h3>
+            <p style="color:var(--muted); margin-bottom:16px;">
+              Thiết lập FaceID để check-in/check-out nhanh và chính xác.
+            </p>
+
+            <button id="btnEnrollFaceID" class="btn outline" style="width:40%;">
+              Đăng ký FaceID
+            </button>
+          </div>
+      </section>
     </section>
   </main>
-
-  <!-- MODAL GỬI YÊU CẦU CHỈNH SỬA / KHIẾU NẠI -->
-  <dialog id="requestModal">
-    <form id="requestForm" class="req-modal" method="dialog">
-      <h3>Gửi yêu cầu chỉnh sửa / khiếu nại</h3>
-
-      <div class="form-grid">
-        <label>Loại yêu cầu
-          <select id="reqType">
-            <option value="chinh-sua">Chỉnh sửa chấm công</option>
-            <option value="khieu-nai">Khiếu nại khác</option>
-          </select>
-        </label>
-
-        <label>Ngày
-          <input type="date" id="reqDate" required>
-        </label>
-
-        <label>Ca làm
-          <select id="reqShift">
-            <option value="Sáng">Sáng</option>
-            <option value="Chiều">Chiều</option>
-            <option value="Khác">Khác</option>
-          </select>
-        </label>
-
-        <label>Giờ check-in (nếu cần)
-          <input type="time" id="reqIn">
-        </label>
-
-        <label>Giờ check-out (nếu cần)
-          <input type="time" id="reqOut">
-        </label>
-
-        <label class="full">Nội dung
-          <textarea id="reqNote" rows="3" required
-            placeholder="Mô tả vấn đề: chấm sai giờ, quên check-in..."></textarea>
-        </label>
-      </div>
-
-      <div class="actions">
-        <button type="button" id="reqCancel" class="btn close">Hủy</button>
-        <button type="submit" class="btn primary">Gửi yêu cầu</button>
-      </div>
-    </form>
-  </dialog>
 
   <!-- faceid modal -->
   <dialog id="faceModal">
@@ -198,5 +189,27 @@
       <button class="btn close" id="faceCloseBtn" style="margin-top:10px;">Đóng</button>
     </div>
   </dialog>
+<div id="shiftDetailModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h2>Chi tiết ca làm</h2>
+
+    <div class="modal-row">
+      <label>Mã ca:</label><span id="modalShiftCode"></span>
+    </div>
+    <div class="modal-row">
+      <label>Tên ca:</label><span id="modalShiftName"></span>
+    </div>
+    <div class="modal-row">
+      <label>Ngày:</label><span id="modalShiftDate"></span>
+    </div>
+    <div class="modal-row">
+      <label>Giờ:</label><span id="modalShiftTime"></span>
+    </div>
+
+    <button id="closeShiftDetail" class="btn-close">Đóng</button>
+  </div>
+</div>
+
+
 </body>
 </html>

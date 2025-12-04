@@ -8,7 +8,12 @@ import {
   sendOtp,
   verifyOtp,
   forgotPassword,
+  checkResetOtp,
+  resetPassword,
+  changePassword
 } from "../controllers/auth.controllers.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+
 
 const router = express.Router();
 
@@ -24,5 +29,7 @@ router.post("/refresh", refreshToken);
 router.post("/logout", logoutUser);
 
 router.post("/forgot-password", forgotPassword);
-
+router.post("/reset-password/check", checkResetOtp);
+router.post("/reset-password", resetPassword);
+router.post("/change-password", authMiddleware, changePassword);
 export default router;

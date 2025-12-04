@@ -10,12 +10,13 @@ let currentUser = null;
 
 let employees = [];
 let shifts = [];
-let requests = [];
 let reports = [];
 
 let mapInstance = null;
 let marker = null;
 let circle = null;
+let editingEmpId = null;
+let currentEditShiftId = null;
 
 // ---------------------------------------
 // Helper: lấy user + token từ localStorage
@@ -42,7 +43,7 @@ function getAuthHeaders(json) {
 // ---------------------------------------
 // INIT
 // ---------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   currentUser = loadCurrentUser();
   flatpickr("#shiftDate", {
     dateFormat: "d/m/Y",
@@ -77,15 +78,13 @@ if (!allowedRoles.includes(currentUser.user.role)) {
   initEmployeesUI();
   initShiftsUI();
   initReportsUI();
-  initRequestsUI();
   initLocationUI();
   initMiniCalendar();
 
   // Load dữ liệu ban đầu
-  loadEmployees();
-  loadShifts();
-  loadRequests();
-  loadReports();
+  await loadEmployees();
+  await loadShifts();
+  //loadReports();
   loadCompanyLocation();
 });
 
@@ -130,7 +129,7 @@ function initLogout() {
     } catch (e) {
       console.warn("Logout error (ignored)", e);
     } finally {
-      // localStorage.removeItem("tkUser");
+      localStorage.removeItem("tkUser");
       window.location.href = "auth.html";
     }
   });
@@ -141,7 +140,17 @@ function initLogout() {
 // =======================================
 function initEmployeesUI() {
   const reloadBtn = document.getElementById("btnReloadEmployees");
-  if (reloadBtn) reloadBtn.addEventListener("click", loadEmployees);
+  if (reloadBtn) {
+  reloadBtn.addEventListener("click", async () => {
+    reloadBtn.classList.add("spin-once");
+
+    // Chờ animation xoay xong (450ms)
+    setTimeout(async () => {
+      await loadEmployees();     // load lại sau khi xoay
+      reloadBtn.classList.remove("spin-once");
+    }, 450);
+  });
+}
 
   const searchInput = document.getElementById("empSearch");
   if (searchInput) {
@@ -155,6 +164,17 @@ function initEmployeesUI() {
       renderEmployees(filtered);
     });
   }
+  document.querySelector("#empTable").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const userId = btn.dataset.id;
+
+    if (action === "edit") openEditEmployee(userId);
+    if (action === "toggle") toggleEmployeeStatus(userId);
+    if (action === "delete") deleteEmployee(userId);
+  });
 
   // Event delegation cho bảng nhân viên
   const empTable = document.getElementById("empTable");
@@ -172,6 +192,31 @@ function initEmployeesUI() {
       }
     });
   }
+  // ====== Gắn sự kiện cho modal Edit ======
+    const btnClose = document.getElementById("btnCloseEditEmp");
+    if (btnClose) {
+      btnClose.onclick = () => {
+        document.getElementById("editEmpModal").classList.add("hidden");
+        editingEmpId = null;
+      };
+    }
+
+    const btnSave = document.getElementById("btnSaveEmp");
+    if (btnSave) {
+      btnSave.onclick = saveEmployeeEdits;
+    }
+
+    // NÚT XOÁ tài khoản
+    const btnDelete = document.getElementById("btnDeleteEmp");
+      if (btnDelete) {
+        btnDelete.onclick = () => {
+          if (!editingEmpId) {
+            alert("Không có nhân viên nào đang được chọn.");
+            return;
+          }
+          deleteEmployee(editingEmpId);
+        };
+      }
 }
 
 async function loadEmployees() {
@@ -200,83 +245,107 @@ async function loadEmployees() {
 
 function renderEmployees(list) {
   const tbody = document.querySelector("#empTable tbody");
-  if (!tbody) return;
   tbody.innerHTML = "";
 
   if (!list || list.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 6;
-    td.textContent = "Chưa có nhân viên nào.";
-    tr.appendChild(td);
-    tbody.appendChild(tr);
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Chưa có nhân viên.</td></tr>`;
     return;
   }
 
   list.forEach((u) => {
+    const acc = (u.accountStatus || "").toLowerCase();
+    const isActive = acc === "active";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
-        <td>${u.id || ""}</td>
-        <td>${u.name || ""}</td>
-        <td>${u.email || ""}</td>
-        <td>${u.dept || "-"}</td>
-        <td>${u.status || "active"}</td>
-        <td>
-          <button class="btn sm outline" data-action="edit-emp" data-id="${u.id}">
-            Sửa
-          </button>
-          <button class="btn sm danger" data-action="delete-emp" data-id="${u.id}">
-            Xóa
-          </button>
-        </td>
-      `;
+      <td>${u.employeeCode || u.id.slice(0, 6)}</td>
+      <td>${u.name}</td>
+      <td>${u.email}</td>
+      <td>${u.dept || "-"}</td>
+      <td>${u.status === "active" ? "Đang hoạt động" : "Đã khoá"}</td>
+
+      <td class="actions">
+        <button class="pill-btn sm blue" data-action="edit" data-id="${u.employeeCode || u.id.slice(0, 6)}">
+          Cập nhật
+        </button>
+      </td>
+    `;
     tbody.appendChild(tr);
   });
 }
 
 // Sửa thông tin nhân viên (dùng prompt đơn giản)
-async function openEditEmployee(userId) {
-  const user = employees.find((u) => u.id === userId);
+function openEditEmployee(userId) {
+  const user = employees.find((u) => u.employeeCode || u.id.slice(0, 6) === userId);
   if (!user) return;
 
-  const newName = prompt("Họ tên:", user.name || "");
-  if (newName === null) return;
+  editingEmpId = user.id;
 
-  const newDept = prompt("Bộ phận:", user.dept || "");
-  if (newDept === null) return;
+  document.getElementById("editEmpName").value = user.name || "";
+  document.getElementById("editEmpEmail").value = user.email || "";
+  document.getElementById("editEmpDept").value = user.dept || "";
+  document.getElementById("editEmpStatus").value = user.status || "active";
 
-  const newRole = prompt("Chức vụ (employee/manager):", user.role || "employee");
-  if (newRole === null) return;
+  document.getElementById("editEmpModal").classList.remove("hidden");
+}
 
-  const newStatus = prompt("Trạng thái (active/inactive):", user.status || "active");
-  if (newStatus === null) return;
+async function toggleEmployeeStatus(userId) {
+  const user = employees.find((u) => u.employeeCode || u.id.slice(0, 6) === userId);
+  const newStatus = user.status === "active" ? "inactive" : "active";
+
+  await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify({ status: newStatus }),
+  });
+
+  loadEmployees();
+}
+
+
+async function saveEmployeeEdits() {
+  if (!editingEmpId) return;
+
+  const payload = {
+    name: document.getElementById("editEmpName").value.trim(),
+    email: document.getElementById("editEmpEmail").value.trim(),
+    dept: document.getElementById("editEmpDept").value.trim(),
+    status: document.getElementById("editEmpStatus").value
+  };
 
   try {
-    const res = await fetch(`${API_BASE}/users/${encodeURIComponent(userId)}`, {
+    const res = await fetch(`${API_BASE}/users/${editingEmpId}`, {
       method: "PATCH",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        name: newName.trim(),
-        dept: newDept.trim(),
-        role: newRole.trim(),
-        status: newStatus.trim(),
-      }),
+      headers: getAuthHeaders(true),
+      body: JSON.stringify(payload),
     });
+
     const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Cập nhật thất bại");
-    alert("Cập nhật nhân viên thành công");
+    if (!json.success) throw new Error(json.message);
+
+    alert("Cập nhật thành công!");
+    document.getElementById("editEmpModal").classList.add("hidden");
+
     loadEmployees();
   } catch (err) {
-    console.error("update employee error:", err);
-    alert("Không cập nhật được nhân viên");
+    alert("Lỗi cập nhật: " + err.message);
   }
 }
 
 async function deleteEmployee(userId) {
-  const user = employees.find((u) => u.id === userId);
+  const user = employees.find((u) => u.employeeCode || u.id.slice(0, 6) === userId);
   if (!user) return;
 
-  if (!confirm(`Bạn chắc chắn muốn xóa nhân viên ${user.name || user.id}?`)) {
+  // chỉ xoá khi accountStatus = inactive
+  const status = (user.status || "").toLowerCase();
+
+  if (user.status !== "inactive") {
+  alert("Chỉ xóa được nhân viên đã bị khóa.");
+  return;
+}
+
+  if (!confirm(`Bạn chắc chắn muốn xóa nhân viên: ${user.name} ?
+Tất cả dữ liệu của nhân viên này sẽ bị xoá.`)) {
     return;
   }
 
@@ -285,13 +354,15 @@ async function deleteEmployee(userId) {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
+
     const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Xóa thất bại");
-    alert("Xóa nhân viên thành công");
+    if (!json.success) throw new Error(json.message);
+
+    alert("Xóa nhân viên thành công!");
     loadEmployees();
   } catch (err) {
-    console.error("delete employee error:", err);
-    alert("Không xóa được nhân viên");
+    console.error("delete error:", err);
+    alert("Không thể xóa nhân viên.");
   }
 }
 
@@ -445,15 +516,13 @@ function renderShifts(list) {
   list.forEach((s) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-        <td>${s.id}</td>
+        <td>${s.shiftCode || s.id.slice(0, 6)}</td>
         <td>${s.name || ""}</td>
         <td>${s.startTime || ""}</td>
         <td>${s.endTime || ""}</td>
         <td>${s.note || ""}</td>
         <td>
-          <button class="pill-btn sm" data-action="assign-from-shift" data-id="${s.id}">
-            Gán ca
-          </button>
+          <button class="btn outline" onclick="openEditShift('${s.id}')">Xem</button>
         </td>
       `;
     tbody.appendChild(tr);
@@ -493,8 +562,8 @@ async function loadAssignUsers() {
     list.forEach((u) => {
       if (u.role === "admin" || u.role === "System Admin") return;
       const opt = document.createElement("option");
-      opt.value = u.id;
-      opt.textContent = u.name || u.email || u.id;
+      opt.value = u.employeeCode || u.id.slice(0, 6);
+      opt.textContent = u.name || u.email || u.employeeCode || u.id.slice(0, 6);
       sel.appendChild(opt);
     });
   } catch (err) {
@@ -510,9 +579,9 @@ function loadAssignShifts() {
 
   shifts.forEach((s) => {
     const opt = document.createElement("option");
-    opt.value = s.id;
+    opt.value = s.shiftCode || s.id.slice(0, 6);
     opt.textContent = s.name || `${s.startTime} - ${s.endTime}`;
-    if (selectedShiftId && s.id === selectedShiftId) {
+    if (selectedShiftId && s.shiftCode || s.id.slice(0, 6) === selectedShiftId) {
       opt.selected = true;
     }
     sel.appendChild(opt);
@@ -578,7 +647,7 @@ async function loadAssignUsers() {
   sel.innerHTML = "";
   list.forEach(u => {
     if (u.role !== "admin") {
-      sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+      sel.innerHTML += `<option value="${u.employeeCode || u.id.slice(0, 6)}">${u.name}</option>`;
     }
   });
 }
@@ -586,274 +655,404 @@ function loadAssignShifts() {
   const sel = document.getElementById("assignShiftSelect");
   sel.innerHTML = "";
   shifts.forEach(s => {
-    sel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    sel.innerHTML += `<option value="${s.shiftCode || s.id.slice(0, 6)}">${s.name}</option>`;
   });
 }
-
-
 // =======================================
-// 3. THỐNG KÊ & BÁO CÁO
+// 3. THỐNG KÊ & BÁO CÁO (FLOW MỚI)
 // =======================================
 function initReportsUI() {
-  const btnCreate = document.getElementById("btnCreateReport");
-  if (btnCreate) {
-    btnCreate.addEventListener("click", async () => {
-      const title = document.getElementById("repTitle")?.value.trim();
-      const fromDate = document.getElementById("repFrom")?.value;
-      const toDate = document.getElementById("repTo")?.value;
-
-      if (!title || !fromDate || !toDate) {
-        alert("Vui lòng nhập đủ tiêu đề và khoảng thời gian.");
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/reports`, {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ title, fromDate, toDate }),
-        });
-        const json = await res.json();
-        if (!json.success)
-          throw new Error(json.message || "Tạo báo cáo thất bại");
-
-        document.getElementById("repTitle").value = "";
-        document.getElementById("repFrom").value = "";
-        document.getElementById("repTo").value = "";
-        loadReports();
-      } catch (err) {
-        console.error("create report error:", err);
-        alert("Không tạo được báo cáo");
-      }
-    });
-  }
-
-  const tbody = document.querySelector("#reportTable tbody");
-  if (tbody && !tbody._hasReportListener) {
-    tbody.addEventListener("click", onReportTableClick);
-    tbody._hasReportListener = true;
-  }
-}
-
-async function loadReports() {
-  try {
-    const res = await fetch(`${API_BASE}/reports`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Không load được báo cáo");
-
-    reports = json.data || [];
-    renderReports(reports);
-  } catch (err) {
-    console.error("loadReports error:", err);
-    alert("Không load được danh sách báo cáo");
-  }
-}
-
-function renderReports(list) {
-  const tbody = document.querySelector("#reportTable tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-
-  if (!list || list.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 5;
-    td.textContent = "Chưa có báo cáo nào.";
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
-  list.forEach((r) => {
-    const tr = document.createElement("tr");
-    const range =
-      (r.fromDate || "") && (r.toDate || "")
-        ? `${r.fromDate} → ${r.toDate}`
-        : "";
-    tr.innerHTML = `
-      <td>${r.title || ""}</td>
-      <td>${range}</td>
-      <td>${r.status || "pending"}</td>
-      <td>${
-        r.createdAt ? new Date(r.createdAt).toLocaleString("vi-VN") : ""
-      }</td>
-      <td>
-        ${
-          r.status === "pending"
-            ? `
-          <button class="pill-btn sm" data-action="approve-report" data-id="${r.id}">
-            Duyệt
-          </button>
-          <button class="btn sm outline" data-action="reject-report" data-id="${r.id}">
-            Từ chối
-          </button>
-          `
-            : "-"
-        }
-      </td>
-    `;
-    tbody.appendChild(tr);
+  const monthInput = document.getElementById("repMonth");
+  const btnExport = document.getElementById("btnLoadSummary"); // rename mentally to Export PDF
+  document.getElementById("employeeSearchBox")?.addEventListener("input", () => {
+    renderEmployeeSummary(employees);
   });
-}
+    const gotoShiftTab = document.getElementById("gotoShiftTab");
 
-async function onReportTableClick(e) {
-  const btn = e.target.closest("button[data-action]");
-  if (!btn) return;
-  const reportId = btn.dataset.id;
-  const action = btn.dataset.action;
-  if (!reportId || !action) return;
-
-  const status = action === "approve-report" ? "approved" : "rejected";
-  try {
-    const res = await fetch(`${API_BASE}/reports/${encodeURIComponent(reportId)}`, {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status }),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Cập nhật thất bại");
-    loadReports();
-  } catch (err) {
-    console.error("update report status error:", err);
-    alert("Không cập nhật được trạng thái báo cáo");
-  }
-}
-
-// =======================================
-// 4. DUYỆT YÊU CẦU
-// =======================================
-function initRequestsUI() {
-  const filter = document.getElementById("reqFilter");
-  if (filter) {
-    filter.addEventListener("change", () => renderRequests(applyRequestFilter()));
-  }
-
-  const tbody = document.querySelector("#reqTable tbody");
-  if (tbody) {
-    tbody.addEventListener("click", onRequestTableClick);
-  }
-}
-
-async function loadRequests() {
-  try {
-    const res = await fetch(`${API_BASE}/requests`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Không load được yêu cầu");
-    requests = json.data || [];
-    renderRequests(applyRequestFilter());
-    updateDashboard();
-  } catch (err) {
-    console.error("loadRequests error:", err);
-    alert("Không load được danh sách yêu cầu");
-  }
-}
-
-function applyRequestFilter() {
-  const filter = document.getElementById("reqFilter");
-  const value = filter ? filter.value : "all";
-  if (value === "all") return requests;
-
-  return requests.filter((r) => r.status === value);
-}
-
-function renderRequests(list) {
-  const tbody = document.querySelector("#reqTable tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-
-  if (!list || list.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 6;
-    td.textContent = "Không có yêu cầu nào.";
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
-  // map userId -> name để hiển thị đẹp hơn
-  const empMap = {};
-  employees.forEach((u) => {
-    if (u.id) empMap[u.id] = u.name || u.email || u.id;
-  });
-
-  list.forEach((r) => {
-    const empName = empMap[r.userId] || r.userId || "";
-    const dateShift = r.date
-      ? `${r.date}${r.shift ? " - " + r.shift : ""}`
-      : r.shift || "";
-    const contentParts = [];
-    if (r.cin || r.cout) {
-      contentParts.push(
-        `Giờ đề nghị: ${r.cin || "--"} - ${r.cout || "--"}`
-      );
+    if (gotoShiftTab) {
+      gotoShiftTab.style.cursor = "pointer";
+      gotoShiftTab.addEventListener("click", () => {
+        const btn = document.querySelector('.nav-item[data-route="shifts"]');
+        if (btn) btn.click();
+      });
     }
-    if (r.note) contentParts.push(r.note);
-    const content = contentParts.join(" | ");
+  const btnRefresh = document.getElementById("btnReloadReports");
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      loadSummaryByMonth();   // Load lại toàn bộ dữ liệu báo cáo
+    });
+  }
+  
+  if (!monthInput) return;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${empName}</td>
-      <td>${dateShift}</td>
-      <td>${r.type || ""}</td>
-      <td>${content}</td>
-      <td>${r.status || "pending"}</td>
-      <td>
-        ${
-          r.status === "pending"
-            ? `
-        <button class="pill-btn sm" data-action="approve-req" data-id="${r.id}">
-          Duyệt
+  // Auto set month = current
+  if (!monthInput.value) {
+    const now = new Date();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    monthInput.value = `${now.getFullYear()}-${m}`;
+  }
+
+  // 1️⃣ Load ngay khi vào tab
+  loadSummaryByMonth();
+
+  // 2️⃣ Load khi đổi tháng
+  monthInput.addEventListener("change", () => {
+    loadSummaryByMonth();
+  });
+
+  // 3️⃣ Nút xuất PDF
+  btnExport.addEventListener("click", () => {
+    exportSummaryPDF();
+  });
+}
+function loadSummaryByMonth() {
+  const monthInput = document.getElementById("repMonth");
+  const mv = monthInput.value;
+  if (!mv) return;
+
+  const [y, m] = mv.split("-");
+  const from = `${y}-${m}-01`;
+  const lastDay = new Date(Number(y), Number(m), 0).getDate();
+  const to = `${y}-${m}-${String(lastDay).padStart(2,"0")}`;
+
+  loadMonthlySummary(from, to);  // dùng hàm bạn đang có
+}
+function initSummaryCardEvents(summaryData) {
+  // 1️⃣ Tổng ca → chuyển tab Quản lý ca làm
+  const gotoShiftTab = document.getElementById("gotoShiftTab");
+  if (gotoShiftTab) {
+    gotoShiftTab.style.cursor = "pointer";
+    gotoShiftTab.addEventListener("click", () => {
+      const tab = document.querySelector('.nav-item[data-route="shifts"]');
+      if (tab) tab.click();
+    });
+  }
+
+  // 2️⃣ Có mặt → modal danh sách
+  const presentBtn = document.getElementById("gotoPresentList");
+  if (presentBtn) {
+    presentBtn.style.cursor = "pointer";
+    presentBtn.addEventListener("click", openPresentModal);
+  }
+
+  // 3️⃣ Vắng → modal danh sách
+  const absentBtn = document.getElementById("gotoAbsentList");
+  if (absentBtn) {
+    absentBtn.style.cursor = "pointer";
+    absentBtn.addEventListener("click", openAbsentModal);
+  }
+
+  // 4️⃣ Tỉ lệ → modal phân tích
+  const rateBtn = document.getElementById("gotoRate");
+  if (rateBtn) {
+    rateBtn.style.cursor = "pointer";
+    rateBtn.addEventListener("click", openRateModal);
+  }
+}
+
+async function loadMonthlySummary() {
+  try {
+    const monthInput = document.getElementById("repMonth");
+    const ym = monthInput.value; // "2025-01"
+    if (!ym) return;
+
+    const [year, month] = ym.split("-");
+    const from = `${year}-${month}-01`;
+    const to = `${year}-${month}-31`;
+
+    const res = await fetch(`${API_BASE}/reports/summary?from=${from}&to=${to}`, {
+      headers: getAuthHeaders(false),
+    });
+    const json = await res.json();
+
+    if (!json.success) throw new Error("API error");
+
+    const data = json.data || {};
+
+    // Lưu tổng quan
+    document.getElementById("sumTotal").textContent = data.totalAssignments ?? 0;
+    document.getElementById("sumPresent").textContent = data.present ?? 0;
+    document.getElementById("sumAbsent").textContent = data.absent ?? 0;
+    document.getElementById("sumRate").textContent =
+      ((data.attendanceRate || 0) * 100).toFixed(0) + "%";
+
+    // Lưu chi tiết
+    _allDetailRows = data.details || [];
+    _allEmployees = data.employees || [];
+
+    renderEmployeeSummary(_allEmployees);
+    initSummaryCardEvents(data);
+
+  } catch (err) {
+    console.error("loadMonthlySummary error:", err);
+  }
+}
+
+// Bảng tổng quan theo nhân viên (tổng ca / đi làm / vắng / tỉ lệ)
+function renderEmployeeSummary(list) {
+  const wrap = document.getElementById("employeeSummaryTable");
+  if (!wrap) return;
+
+  const keyword = document.getElementById("employeeSearchBox")?.value?.toLowerCase() || "";
+
+  filteredEmployees = list.filter(u => {
+    return u.name?.toLowerCase().includes(keyword);
+  });
+
+  if (!filteredEmployees.length) {
+    wrap.innerHTML = `<p style="padding:12px;">Không có nhân viên nào.</p>`;
+    return;
+  }
+
+  let html = `<div class="emp-card-grid">`;
+
+  filteredEmployees.forEach(u => {
+    const rate = u.assigned ? Math.round((u.present / u.assigned) * 100) : 0;
+
+    html += `
+      <div class="emp-card" data-user-id="${u.userId}">
+        <div class="emp-info">
+          <h4>${u.name}</h4>
+          <p class="emp-role">Nhân viên</p>
+        </div>
+
+        <div class="emp-stats">
+          <div class="emp-stat"><strong>${u.assigned}</strong><span>Tổng ca</span></div>
+          <div class="emp-stat"><strong>${u.present}</strong><span>Đi làm</span></div>
+          <div class="emp-stat"><strong>${u.absent}</strong><span>Vắng</span></div>
+          <div class="emp-stat"><strong>${rate}%</strong><span>Tỉ lệ</span></div>
+        </div>
+
+        <button class="pill-btn emp-detail-btn" data-user-id="${u.userId}">
+          Xem chi tiết
         </button>
-        <button class="btn sm outline" data-action="reject-req" data-id="${r.id}">
-          Từ chối
-        </button>
-        `
-            : "-"
-        }
-      </td>
+      </div>
     `;
-    tbody.appendChild(tr);
+  });
+
+  html += `</div>`;
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".emp-detail-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      openEmployeeDetailModal(btn.dataset.userId);
+    });
   });
 }
 
-async function onRequestTableClick(e) {
-  const btn = e.target.closest("button[data-action]");
-  if (!btn) return;
 
-  const requestId = btn.dataset.id;
-  const action = btn.dataset.action;
-  if (!requestId || !action) return;
+// Bảng chi tiết từng ca (dùng cho xem theo ngày / theo nhân viên)
+let _allDetailRows = [];
+let filteredEmployees = [];
 
-  const status = action === "approve-req" ? "approved" : "rejected";
-  let adminNote = "";
-  if (status === "rejected") {
-    adminNote = prompt("Lý do từ chối (có thể bỏ trống):") || "";
+function renderDetailTable(rows) {
+  const wrap = document.getElementById("detailTableWrap");
+  if (!wrap) return;
+
+  _allDetailRows = rows || [];
+
+  if (!_allDetailRows.length) {
+    wrap.innerHTML =
+      "<p style='padding:8px 0;'>Không có dữ liệu chi tiết ca làm.</p>";
+    return;
   }
 
-  try {
-    const res = await fetch(
-      `${API_BASE}/requests/${encodeURIComponent(requestId)}`,
-      {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ status, adminNote }),
-      }
-    );
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Cập nhật thất bại");
-    loadRequests();
-  } catch (err) {
-    console.error("update request status error:", err);
-    alert("Không cập nhật được yêu cầu");
-  }
+  const html = buildDetailTableHTML(_allDetailRows);
+  wrap.innerHTML = html;
 }
+
+function buildDetailTableHTML(rows) {
+  let html = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Nhân viên</th>
+          <th>Ca làm</th>
+          <th>Giờ ca</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Giờ làm</th>
+          <th>Đi muộn / về sớm</th>
+          <th>Lỗi chấm công</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  rows.forEach((r) => {
+    const lateStr = r.isLate ? `Muộn ${r.lateMinutes}p` : "";
+    const earlyStr = r.isEarly ? `Về sớm ${r.earlyMinutes}p` : "";
+    const lateEarly = [lateStr, earlyStr].filter(Boolean).join(" · ") || "-";
+
+    const errList = [];
+    if (r.missingCheckIn) errList.push("Không check-in");
+    if (r.missingCheckOut) errList.push("Không check-out");
+    if (r.checkoutWithoutCheckin) errList.push("Checkout không checkin");
+    const errStr = errList.length ? errList.join(", ") : "-";
+
+    html += `
+      <tr>
+        <td>${r.date}</td>
+        <td>${r.userName}</td>
+        <td>${r.shiftName || "-"}</td>
+        <td>${r.shiftStart || ""} - ${r.shiftEnd || ""}</td>
+        <td>${r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString("vi-VN", {hour:"2-digit", minute:"2-digit"}) : "-"}</td>
+        <td>${r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString("vi-VN", {hour:"2-digit", minute:"2-digit"}) : "-"}</td>
+        <td>${r.workHours || 0}</td>
+        <td>${lateEarly}</td>
+        <td>${errStr}</td>
+      </tr>
+    `;
+  });
+
+  html += "</tbody></table>";
+  return html;
+}
+
+function filterDetailByEmployee(userId) {
+  const wrap = document.getElementById("detailTableWrap");
+  if (!wrap) return;
+  if (!userId) {
+    wrap.innerHTML = buildDetailTableHTML(_allDetailRows);
+    return;
+  }
+  const filtered = _allDetailRows.filter((r) => r.userId === userId);
+  wrap.innerHTML = buildDetailTableHTML(filtered);
+}
+async function exportSummaryPDF() {
+  const monthInput = document.getElementById("repMonth");
+  const mv = monthInput.value;
+  if (!mv) return;
+
+  const [y, m] = mv.split("-");
+  const from = `${y}-${m}-01`;
+  const lastDay = new Date(Number(y), Number(m), 0).getDate();
+  const to = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
+
+  const url = `${API_BASE}/reports/summary/pdf?from=${from}&to=${to}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    alert("Xuất báo cáo thất bại");
+    return;
+  }
+
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `BaoCao-${from}-to-${to}.pdf`;
+  link.click();
+}
+
+function openEmployeeDetailModal(userId) {
+  const modal = document.getElementById("empDetailModal");
+  const nameEl = document.getElementById("detailEmpName");
+  const tableWrap = document.getElementById("empDetailTableWrap");
+
+  // Lấy tên nhân viên từ danh sách employees
+  const emp = employees.find(e => e.id === userId);
+  const name = emp ? emp.name : userId;
+
+  nameEl.textContent = `Chi tiết – ${name}`;
+
+  // Lọc chi tiết từ _allDetailRows (đã load sẵn)
+  const rows = _allDetailRows.filter(r => r.userId === userId);
+
+  if (!rows.length) {
+    tableWrap.innerHTML = "<p>Không có dữ liệu ca làm.</p>";
+  } else {
+    tableWrap.innerHTML = buildDetailTableHTML(rows);
+  }
+
+  modal.classList.remove("hidden");
+
+  document.getElementById("btnCloseEmpDetail").onclick = () =>
+    modal.classList.add("hidden");
+}
+function renderPresentList() {
+  const list = document.getElementById("presentList");
+  list.innerHTML = "";
+
+  const present = _allEmployees.filter(e => e.present > 0);
+  if (!present.length) {
+    list.innerHTML = "<li>Không có nhân viên nào đi làm.</li>";
+    return;
+  }
+
+  present.forEach(e => {
+    list.innerHTML += `<li>${e.name} – ${e.present}/${e.assigned} ca</li>`;
+  });
+}
+function renderAbsentList() {
+  const list = document.getElementById("absentList");
+  list.innerHTML = "";
+
+  const absent = _allEmployees.filter(e => e.absent > 0);
+  if (!absent.length) {
+    list.innerHTML = "<li>Không có nhân viên nào vắng.</li>";
+    return;
+  }
+
+  absent.forEach(e => {
+    list.innerHTML += `<li>${e.name} – ${e.absent}/${e.assigned} ca</li>`;
+  });
+}
+
+function renderRateList() {
+  const list = document.getElementById("rateList");
+  list.innerHTML = "";
+
+  if (!_allEmployees.length) {
+    list.innerHTML = "<li>Không có dữ liệu.</li>";
+    return;
+  }
+
+  _allEmployees.forEach(e => {
+    const rate = ((e.attendanceRate || 0) * 100).toFixed(0);
+    list.innerHTML += `<li>${e.name} – ${rate}% (${e.present}/${e.assigned})</li>`;
+  });
+}
+
+function toggleModal(id, show) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.style.display = show ? "block" : "none";
+}
+// Mở modal
+function openPresentModal() {
+  renderPresentList();
+  document.getElementById("presentModal").classList.remove("hidden");
+}
+function openAbsentModal() {
+  renderAbsentList();
+  document.getElementById("absentModal").classList.remove("hidden");
+}
+function openRateModal() {
+  renderRateList();
+  document.getElementById("rateModal").classList.remove("hidden");
+}
+document.getElementById("closePresent").addEventListener("click", () => {
+  document.getElementById("presentModal").classList.add("hidden");
+});
+document.getElementById("closeAbsent").addEventListener("click", () => {
+  document.getElementById("absentModal").classList.add("hidden");
+});
+document.getElementById("closeRate").addEventListener("click", () => {
+  document.getElementById("rateModal").classList.add("hidden");
+});
+document.querySelectorAll(".modal").forEach(m => {
+  m.addEventListener("click", (e) => {
+    if (e.target.classList.contains("modal")) {
+      m.classList.add("hidden");
+    }
+  });
+});
 
 // =======================================
 // 5. CÀI ĐẶT VỊ TRÍ CÔNG TY (GPS + MAP)
@@ -1085,15 +1284,10 @@ function useCurrentGPS() {
 function updateDashboard() {
   const totalEmpEl = document.getElementById("mgrTotalEmployees");
   const totalAssignEl = document.getElementById("mgrTotalAssignments");
-  const pendingReqEl = document.getElementById("mgrPendingRequests");
 
   if (totalEmpEl) totalEmpEl.textContent = String(employees.length || 0);
   // Tạm dùng số ca làm như số lượt gán ca (nếu cần sau chỉnh lại theo user_shifts)
   if (totalAssignEl) totalAssignEl.textContent = String(shifts.length || 0);
-  if (pendingReqEl)
-    pendingReqEl.textContent = String(
-      (requests || []).filter((r) => r.status === "pending").length
-    );
 }
 function initMiniCalendar() {
   const root = document.getElementById("miniCal");
@@ -1164,4 +1358,133 @@ function initMiniCalendar() {
   }
 
   render();
+}
+function toInputDateFormat(d) {
+  // d = "29/11/2025"
+  const [day, month, year] = d.split("/");
+  return `${year}-${month}-${day}`;
+}
+
+async function openEditShift(shiftId) {
+  currentEditShiftId = shiftId;
+
+  // Lấy thông tin ca
+  const res = await fetch(`${API_BASE}/shifts/${shiftId}`, {
+    headers: getAuthHeaders()
+  });
+  const data = await res.json();
+  if (!data.success) return alert(data.message);
+
+  const shift = data.data;
+
+  // Gán thông tin vào form
+  document.getElementById("editShiftDate").value = toInputDateFormat(shift.date);
+
+  document.getElementById("editShiftStart").value = shift.startTime;
+  document.getElementById("editShiftEnd").value = shift.endTime;
+
+  // Load nhân viên trong ca
+  loadEmployeesInShift(shiftId);
+
+  // Load danh sách nhân viên để thêm
+  loadEmployeeDropdown();
+
+  document.getElementById("editShiftModal").classList.remove("hidden");
+}
+
+function closeEditShiftModal() {
+  document.getElementById("editShiftModal").classList.add("hidden");
+}
+async function loadEmployeesInShift(shiftId) {
+  const box = document.getElementById("editShiftEmployees");
+  box.innerHTML = "Đang tải...";
+
+  const res = await fetch(`${API_BASE}/shifts/${shiftId}/employees`, {
+    headers: getAuthHeaders()
+  });
+  const data = await res.json();
+
+  if (!data.success) {
+    box.innerHTML = "Lỗi tải nhân viên";
+    return;
+  }
+
+  box.innerHTML = "";
+
+  data.data.forEach(emp => {
+    box.innerHTML += `
+      <div>
+        <span>${emp.name}</span>
+        <button class="btn outline small" onclick="removeEmployee('${emp.id}')">X</button>
+      </div>
+    `;
+  });
+}
+async function loadEmployeeDropdown() {
+  const res = await fetch(`${API_BASE}/users/`, {
+    headers: getAuthHeaders()
+  });
+  const data = await res.json();
+
+  const sel = document.getElementById("editShiftAddEmployee");
+  sel.innerHTML = `<option value="">Chọn nhân viên</option>`;
+
+  data.data.forEach(u => {
+    sel.innerHTML += `<option value="${u.employeeCode || u.id.slice(0, 6)}">${u.name}</option>`;
+  });
+}
+
+async function confirmAddEmployee() {
+  const empId = document.getElementById("editShiftAddEmployee").value;
+  if (!empId) return;
+
+  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}/add-employee`, {
+    method: "POST",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify({ userId: empId })
+  });
+
+  const data = await res.json();
+  if (!data.success) return alert(data.message);
+
+  loadEmployeesInShift(currentEditShiftId);
+  alert("Đã thêm nhân viên!");
+}
+
+async function removeEmployee(userId) {
+  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}/remove-employee`, {
+    method: "POST",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify({ userId })
+  });
+
+  const data = await res.json();
+  if (!data.success) return alert(data.message);
+
+  loadEmployeesInShift(currentEditShiftId);
+  alert("Đã xoá nhân viên!");
+}
+
+async function saveShiftChanges() {
+  const payload = {
+    date: document.getElementById("editShiftDate").value,
+    startTime: document.getElementById("editShiftStart").value,
+    endTime: document.getElementById("editShiftEnd").value
+  };
+
+  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}`, {
+    method: "PUT",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if (!data.success) return alert(data.message);
+
+  alert("Đã lưu thay đổi!");
+  closeEditShiftModal();
+
+  // reload danh sách ca ở trang manager
+  loadShifts();
 }

@@ -7,6 +7,11 @@ import {
   assignShift,
   getUserShifts,
   deleteShift,
+  removeEmployeeFromShift,
+  addEmployeeToShift,
+  getEmployeesInShift,
+  getShiftById,
+  updateShift,
 } from "../controllers/shifts.controllers.js";
 
 const router = express.Router();
@@ -25,5 +30,13 @@ router.get("/user/:userId", authMiddleware, getUserShifts);
 
 // (Optional) Admin xoá ca
 router.delete("/:shiftId", authMiddleware, adminOnly, deleteShift);
+router.post("/:shiftId/add-employee", addEmployeeToShift);
+router.post("/:shiftId/remove-employee", removeEmployeeFromShift);
+router.get("/:shiftId", getShiftById);
+router.get("/:shiftId/employees", getEmployeesInShift);
+router.put("/:shiftId", updateShift);
+router.post("/:shiftId/add-employee", addEmployeeToShift);
+router.post("/:shiftId/remove-employee", removeEmployeeFromShift);
+
 
 export default router;
