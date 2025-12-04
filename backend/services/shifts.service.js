@@ -57,8 +57,29 @@ export const getShiftsService = async () => {
     .orderBy("createdAt", "desc")
     .get();
 
-  return snap.docs.map((doc) => doc.data());
+  const result = [];
+
+  for (const doc of snap.docs) {
+    const shift = doc.data();
+    const shiftId = shift.id;
+
+    // ⭐ Lấy danh sách user đã gán vào ca này
+    const userShiftsSnap = await db
+      .collection(USER_SHIFTS_COLLECTION)
+      .where("shiftId", "==", shiftId)
+      .get();
+
+    const employeeCount = userShiftsSnap.size;
+
+    result.push({
+      ...shift,
+      employeeCount,   // ⭐ Trả số lượng nhân viên trong ca
+    });
+  }
+
+  return result;
 };
+
 
 /**
  * Xóa ca làm

@@ -520,7 +520,7 @@ function renderShifts(list) {
         <td>${s.name || ""}</td>
         <td>${s.startTime || ""}</td>
         <td>${s.endTime || ""}</td>
-        <td>${s.note || ""}</td>
+        <td>${s.employeeCount ?? "0"} người </td>
         <td>
           <button class="btn outline" onclick="openEditShift('${s.id}')">Xem</button>
         </td>
