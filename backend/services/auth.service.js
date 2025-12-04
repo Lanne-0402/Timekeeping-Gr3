@@ -92,18 +92,17 @@ export const registerUserService = async ({ name, email, password, role }) => {
 
   // Document id random (giữ để tránh phá hệ thống)
   const userRef = db.collection(USERS_COLLECTION).doc();
-
+  
   await userRef.set({
     id: userRef.id,               // ID thật (random) – dùng để join
     employeeCode,                 // MÃ NV GỌN: “NV001”
     name,
     email,
     passwordHash: hash,
-    role: role || "employee",
+    role: "user",
     dept: "",
-    position: "",
-    workStatus: "dang_lam",
-    accountStatus: "active",
+    position: "employee",
+    status: "active",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -121,28 +120,41 @@ export const registerUserService = async ({ name, email, password, role }) => {
 // VERIFY OTP + CREATE USER
 // =====================
 export const verifyOtpService = async ({ email, otp, name, password }) => {
-  if (!email || !otp || !name || !password)
+  // 0. Kiểm tra dữ liệu
+  if (!email || !otp || !name || !password) {
     return { success: false, message: "Thiếu dữ liệu" };
+  }
 
+  // 1. Lấy OTP từ collection dùng chung
   const ref = db.collection(OTP_COLLECTION).doc(email);
   const otpDoc = await ref.get();
 
-  if (!otpDoc.exists)
+  if (!otpDoc.exists) {
     return { success: false, message: "OTP không tồn tại hoặc đã hết hạn" };
+  }
 
   const data = otpDoc.data();
 
-  if (data.otp !== otp)
+  if (data.otp !== otp) {
     return { success: false, message: "OTP không đúng" };
+  }
 
-  if (Date.now() > data.expiresAt)
+  if (Date.now() > data.expiresAt) {
     return { success: false, message: "OTP đã hết hạn" };
+  }
 
+  // 2. Tạo mã nhân viên NV001, NV002...
+  const employeeCode = await generateEmployeeCode();
+
+  // 3. Hash mật khẩu
   const hash = await bcrypt.hash(password, 10);
+
+  // 4. Tạo user mới
   const userRef = db.collection(USERS_COLLECTION).doc();
 
   await userRef.set({
-    id: userRef.id,
+    id: userRef.id,          // ID thật (random)
+    employeeCode,            // NV001, NV002...
     name,
     email,
     passwordHash: hash,
@@ -150,14 +162,24 @@ export const verifyOtpService = async ({ email, otp, name, password }) => {
     dept: "",
     position: "employee",
     status: "active",
+    workStatus: "dang_lam",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 
+  // 5. Xoá OTP sau khi dùng
   await ref.delete();
 
-  return { success: true, message: "Đăng ký thành công", data: { id: userRef.id } };
+  return {
+    success: true,
+    message: "Đăng ký thành công",
+    data: {
+      id: userRef.id,
+      employeeCode,
+    },
+  };
 };
+
 
 // =====================
 // LOGIN

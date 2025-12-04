@@ -41,17 +41,15 @@ export const sendOtp = async (req, res) => {
 
 export const verifyOtp = async (req, res) => {
   try {
-    const { email, otp, name, password } = req.body;
-    const result = await verifyOtpService({ email, otp, name, password });
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-    return res.json(result);
+    const result = await verifyOtpService(req.body);
+    // service đã trả { success, message, data } rồi → trả thẳng về FE
+    return res.status(result.success ? 200 : 400).json(result);
   } catch (err) {
     console.error("verifyOtp error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 export const loginUser = async (req, res) => {
   try {
