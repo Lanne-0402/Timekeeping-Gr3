@@ -276,7 +276,7 @@ function renderEmployees(list) {
 
 // Sửa thông tin nhân viên (dùng prompt đơn giản)
 function openEditEmployee(userId) {
-  const user = employees.find((u) => u.employeeCode || u.id.slice(0, 6) === userId);
+  const user = employees.find(u => u.employeeCode === userId);
   if (!user) return;
 
   editingEmpId = user.id;
