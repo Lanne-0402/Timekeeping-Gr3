@@ -1,3 +1,4 @@
 backend/config/serviceAccountKey.json
 backend/.env
 backend/node_modules
+selenium-test/node_modules
