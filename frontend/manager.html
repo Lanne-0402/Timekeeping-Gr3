@@ -173,7 +173,7 @@
 
             <div class="filters">
               <label for="repMonth">Chọn tháng:</label>
-              <input id="repMonth" type="month" value="2025-11">
+              <input id="repMonth" type="month" value="2025-12">
               <button id="btnReloadReports" class="icon-refresh">
                   <i class="fa-solid fa-rotate-right"></i>
               </button>
@@ -335,7 +335,7 @@
       <h3>Danh sách nhân viên đi làm</h3>
       <ul id="presentList"></ul>
       <div class="modal-footer">
-        <button id="closePresent" class="pill-btn outline">Đóng</button>
+        <button data-close-modal="presentModal" class="pill-btn outline">Đóng</button>
       </div>
     </div>
   </div>
@@ -344,7 +344,7 @@
       <h3>Danh sách nhân viên vắng</h3>
       <ul id="absentList"></ul>
       <div class="modal-footer">
-        <button id="closeAbsent" class="pill-btn outline">Đóng</button>
+        <button data-close-modal="absentModal" class="pill-btn outline">Đóng</button>
       </div>
     </div>
   </div>
@@ -353,7 +353,7 @@
       <h3>Phân tích tỉ lệ đi làm</h3>
       <ul id="rateList"></ul>
       <div class="modal-footer">
-        <button id="closeRate" class="pill-btn outline">Đóng</button>
+        <button data-close-modal="rateModal" class="pill-btn outline">Đóng</button>
       </div>
     </div>
   </div>

@@ -1383,3 +1383,11 @@ async function saveShiftChanges() {
   // reload danh sách ca ở trang manager
   loadShifts();
 }
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-close-modal]");
+  if (!btn) return;
+
+  const modalId = btn.dataset.closeModal;
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add("hidden");
+});
