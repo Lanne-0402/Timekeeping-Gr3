@@ -1,67 +1,106 @@
 import db from "../config/firebase.js";
 import bcrypt from "bcryptjs";
 import { Timestamp } from "firebase-admin/firestore";
-import { generateEmployeeCode, generateShiftCode } from "../utils/idGenerator.js";
 
-/* ==========================================
+/* =====================================================
    CONFIG
-========================================== */
+===================================================== */
 
-const NUM_EMPLOYEES = 10;
-const NUM_SHIFTS_NOV = 30;
-const NUM_SHIFTS_DEC = 20;
+const EMPLOYEES = [
+  { name: "Nguyễn Văn A", email: "a@example.com", dept: "Bán hàng" },
+  { name: "Trần Thị B", email: "b@example.com", dept: "Kho" },
+  { name: "Lê Văn C", email: "c@example.com", dept: "Bảo vệ" },
+  { name: "Phạm Thị D", email: "d@example.com", dept: "Kế toán" },
+  { name: "Hoàng Văn E", email: "e@example.com", dept: "Bán hàng" },
+  { name: "Võ Thị F", email: "f@example.com", dept: "Kho" },
+  { name: "Đinh Văn G", email: "g@example.com", dept: "Marketing" },
+];
 
-/* ==========================================
+const MONTHS = [
+  { start: "2025-11-01", end: "2025-11-30" },
+  { start: "2025-12-01", end: "2025-12-31" },
+];
+
+/* =====================================================
    HELPERS
-========================================== */
+===================================================== */
 
 function formatDate(d) {
   return d.toISOString().split("T")[0];
 }
 
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
+function randomLate(start) {
+  const [h, m] = start.split(":");
+  const late = Math.floor(Math.random() * 16) + 5; // 5–20 phút
+  const newMin = parseInt(m) + late;
+  return `${h}:${String(newMin % 60).padStart(2, "0")}`;
 }
 
-function randomTime() {
-  const arr = [
-    ["07:00", "11:00"],
-    ["08:00", "17:00"],
-    ["10:30", "17:30"],
-    ["13:00", "17:00"],
-    ["17:00", "22:00"],
-  ];
+function randomEarly(end) {
+  const [h, m] = end.split(":");
+  const early = Math.floor(Math.random() * 11) + 10; // 10–20 phút về sớm
+  const newMin = parseInt(m) - early;
+  return `${h}:${newMin < 0 ? "00" : String(newMin).padStart(2, "0")}`;
+}
+
+function rand(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/* ==========================================
-   1) SEED USERS
-========================================== */
+/* =====================================================
+   0) DELETE OLD DATA (safe)
+===================================================== */
+
+async function deleteCollection(col, keepFilter = null) {
+  const snap = await db.collection(col).get();
+
+  const batch = db.batch();
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+
+    if (keepFilter && keepFilter(data)) return; // skip items we keep
+
+    batch.delete(doc.ref);
+  });
+
+  await batch.commit();
+}
+
+async function wipeOldData() {
+  console.log("🧹 Deleting old data…");
+
+  // Xoá users trừ admin
+  await deleteCollection("users", (u) => u.role === "admin");
+
+  // Xoá shifts, user_shifts, attendance
+  await deleteCollection("shifts");
+  await deleteCollection("user_shifts");
+  await deleteCollection("attendance");
+
+  console.log("✓ Old data wiped");
+}
+
+/* =====================================================
+   1) Seed Users
+===================================================== */
 
 async function seedUsers() {
-  console.log("Seeding users...");
+  console.log("👤 Seeding users…");
 
+  const passwordHash = await bcrypt.hash("12345678", 10);
   const users = [];
 
-  for (let i = 1; i <= NUM_EMPLOYEES; i++) {
-    const empCode = await generateEmployeeCode();
-    const hash = await bcrypt.hash("12345678", 10);
-
+  for (let i = 0; i < EMPLOYEES.length; i++) {
     const ref = db.collection("users").doc();
 
     const u = {
       id: ref.id,
-      employeeCode: empCode,
-      name: `Nhân viên ${i}`,
-      email: `nv${i}@example.com`,
-      passwordHash: hash,
+      name: EMPLOYEES[i].name,
+      email: EMPLOYEES[i].email,
+      dept: EMPLOYEES[i].dept,
       role: "user",
-      position: "employee",
-      dept: "",
       status: "active",
-      workStatus: "dang_lam",
+      passwordHash,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -74,164 +113,152 @@ async function seedUsers() {
   return users;
 }
 
-/* ==========================================
-   2) SEED SHIFTS (NOV + DEC)
-========================================== */
+/* =====================================================
+   2) Seed Shifts (Nov + Dec)
+===================================================== */
 
 async function seedShifts() {
-  console.log("Seeding shifts...");
+  console.log("📅 Seeding shifts…");
 
   const shifts = [];
+  const times = [
+    ["08:00", "17:00"],
+    ["09:00", "18:00"],
+  ];
 
-  // THÁNG 11
-  let dNov = new Date("2025-11-01");
-  for (let i = 0; i < NUM_SHIFTS_NOV; i++) {
-    const d = addDays(dNov, i);
-    const date = formatDate(d);
-    const code = await generateShiftCode();
-    const [start, end] = randomTime();
+  for (const m of MONTHS) {
+    let d = new Date(m.start);
+    const end = new Date(m.end);
 
-    const ref = db.collection("shifts").doc();
+    while (d <= end) {
+      const day = d.getDay(); // 0 CN, 6 T7
 
-    const shift = {
-      id: ref.id,
-      shiftCode: code,
-      name: `Ca ngày ${date}`,
-      date,
-      startTime: start,
-      endTime: end,
-      createdAt: Timestamp.now(),
-    };
+      if (day !== 0 && day !== 6) {
+        const date = formatDate(d);
+        const num = Math.random() < 0.7 ? 1 : 2;
 
-    await ref.set(shift);
-    shifts.push(shift);
-  }
+        for (let i = 0; i < num; i++) {
+          const [start, end] = rand(times);
+          const ref = db.collection("shifts").doc();
 
-  // THÁNG 12
-  let dDec = new Date("2025-12-01");
-  for (let i = 0; i < NUM_SHIFTS_DEC; i++) {
-    const d = addDays(dDec, i);
-    const date = formatDate(d);
-    const code = await generateShiftCode();
-    const [start, end] = randomTime();
+          const s = {
+            id: ref.id,
+            shiftCode: "CA" + Math.floor(Math.random() * 900 + 100),
+            name: `Ca ${i + 1} – ${date}`,
+            date,
+            startTime: start,
+            endTime: end,
+            createdAt: Timestamp.now(),
+          };
 
-    const ref = db.collection("shifts").doc();
+          await ref.set(s);
+          shifts.push(s);
+        }
+      }
 
-    const shift = {
-      id: ref.id,
-      shiftCode: code,
-      name: `Ca ngày ${date}`,
-      date,
-      startTime: start,
-      endTime: end,
-      createdAt: Timestamp.now(),
-    };
-
-    await ref.set(shift);
-    shifts.push(shift);
+      d.setDate(d.getDate() + 1);
+    }
   }
 
   console.log("✓ Shifts seeded");
   return shifts;
 }
 
-/* ==========================================
-   3) ASSIGN SHIFTS TO USERS
-========================================== */
+/* =====================================================
+   3) Assign users to shifts
+===================================================== */
 
 async function seedAssignments(users, shifts) {
-  console.log("Seeding assignments...");
+  console.log("🧩 Seeding assignments…");
 
-  for (const u of users) {
-    const amount = Math.floor(Math.random() * 4) + 3; // 3–6 ca
+  const assignments = [];
 
-    for (let i = 0; i < amount; i++) {
-      const s = shifts[Math.floor(Math.random() * shifts.length)];
+  for (const s of shifts) {
+    const numEmployees = Math.floor(Math.random() * 4) + 1;
 
-      await db.collection("user_shifts").add({
+    const chosen = users
+      .sort(() => 0.5 - Math.random())
+      .slice(0, numEmployees);
+
+    for (const u of chosen) {
+      const ref = db.collection("user_shifts").doc();
+      const a = {
+        id: ref.id,
         userId: u.id,
         shiftId: s.id,
         date: s.date,
         assignedAt: Timestamp.now(),
-      });
+      };
 
+      await ref.set(a);
+      assignments.push({ ...a, shift: s, user: u });
     }
   }
 
   console.log("✓ Assignments seeded");
+  return assignments;
 }
 
-/* ==========================================
-   4) SEED ATTENDANCE
-========================================== */
+/* =====================================================
+   4) Seed Attendance
+===================================================== */
 
-async function seedAttendance(users, shifts) {
-  console.log("Seeding attendance...");
+async function seedAttendance(assignments) {
+  console.log("🕒 Seeding attendance…");
 
-  for (const u of users) {
-    const targetShifts = shifts.slice(0, 15);
+  for (const a of assignments) {
+    const r = Math.random();
 
-    for (const s of targetShifts) {
-      const r = Math.random();
+    let checkInAt = null;
+    let checkOutAt = null;
 
-      let checkIn = null;
-      let checkOut = null;
-
-      if (r < 0.60) {
-        checkIn = s.startTime;
-        checkOut = s.endTime;
-      }
-
-      else if (r < 0.80) {
-        const [h, m] = s.startTime.split(":");
-        const late = Math.floor(Math.random() * 21) + 10;
-        const newMin = parseInt(m) + late;
-        const finalMin = newMin >= 60 ? "50" : newMin.toString().padStart(2, "0");
-        checkIn = `${h}:${finalMin}`;
-        checkOut = s.endTime;
-      }
-
-      else if (r < 0.90) {
-        checkIn = s.startTime;
-        const [h, m] = s.endTime.split(":");
-        const early = Math.floor(Math.random() * 16) + 15;
-        const newMin = parseInt(m) - early;
-        const finalMin = newMin < 0 ? "00" : newMin.toString().padStart(2, "0");
-        checkOut = `${h}:${finalMin}`;
-      }
-
-      else {
-        checkIn = null;
-        checkOut = null;
-      }
-
-      await db.collection("attendance").add({
-        userId: u.id,
-        shiftId: s.id,
-        date: s.date,
-        checkIn,
-        checkOut,
-        createdAt: Timestamp.now(),
-      });
+    if (r < 0.6) {
+      checkInAt = `${a.date}T${a.shift.startTime}:00`;
+      checkOutAt = `${a.date}T${a.shift.endTime}:00`;
+    } else if (r < 0.8) {
+      checkInAt = `${a.date}T${randomLate(a.shift.startTime)}:00`;
+      checkOutAt = `${a.date}T${a.shift.endTime}:00`;
+    } else if (r < 0.9) {
+      checkInAt = `${a.date}T${a.shift.startTime}:00`;
+      checkOutAt = `${a.date}T${randomEarly(a.shift.endTime)}:00`;
+    } else {
+      checkInAt = null;
+      checkOutAt = null;
     }
+
+    await db.collection("attendance").add({
+      userId: a.userId,
+      shiftId: a.shiftId,
+      date: a.date,
+      checkInAt,
+      checkOutAt,
+      workSeconds:
+        checkInAt && checkOutAt
+          ? (new Date(checkOutAt) - new Date(checkInAt)) / 1000
+          : 0,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
   }
 
   console.log("✓ Attendance seeded");
 }
 
-/* ==========================================
-   MAIN RUN
-========================================== */
+/* =====================================================
+   MAIN
+===================================================== */
 
 async function run() {
-  console.log("======= START SEEDING =======");
+  console.log("=== START SEEDING ===");
+
+  await wipeOldData();
 
   const users = await seedUsers();
   const shifts = await seedShifts();
-  await seedAssignments(users, shifts);
-  await seedAttendance(users, shifts);
+  const assignments = await seedAssignments(users, shifts);
+  await seedAttendance(assignments);
 
-  console.log("======= DONE SEEDING =======");
+  console.log("=== DONE SEEDING ===");
   process.exit(0);
 }
 

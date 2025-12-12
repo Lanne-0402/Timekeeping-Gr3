@@ -84,13 +84,11 @@ export const exportPDFService = async (reportId) => {
   const report = reportSnap.data();
 
   // Lấy attendance trong khoảng report.fromDate - report.toDate
-  const attSnap = await db.collection(ATTENDANCE_COLLECTION).get();
-  const attendance = attSnap.docs
-    .map((d) => d.data())
-    .filter(
-      (x) => x.date >= report.fromDate && x.date <= report.toDate
-    );
-
+  const attSnap = await db.collection(ATTENDANCE_COLLECTION)
+  .where("date", ">=", report.fromDate)
+  .where("date", "<=", report.toDate)
+  .get();
+  const attendance = attSnap.docs.map(d => d.data());
   // Group theo user
   const byUser = {};
   attendance.forEach((a) => {
@@ -139,32 +137,32 @@ export const exportPDFService = async (reportId) => {
   return Buffer.concat(buffers);
 };
 export async function summary(from, to) {
-  // 1) Lấy toàn bộ user_shifts trong khoảng
-  const shiftSnap = await db.collection("user_shifts").get();
-  const assignments = shiftSnap.docs
-    .map(d => d.data())
-    .filter(s => s.date >= from && s.date <= to);
+  // 1) user_shifts chỉ trong khoảng ngày
+  const shiftSnap = await db.collection("user_shifts")
+    .where("date", ">=", from)
+    .where("date", "<=", to)
+    .get();
 
-  // 2) Lấy toàn bộ attendance trong khoảng
-  const attSnap = await db.collection(ATTENDANCE_COLLECTION).get();
-  const attendance = attSnap.docs
-    .map(d => d.data())
-    .filter(a => a.date >= from && a.date <= to);
+  const assignments = shiftSnap.docs.map(d => d.data());
 
-  // 3) Lấy users & shifts để map tên
+  // 2) attendance chỉ trong khoảng ngày
+  const attSnap = await db.collection(ATTENDANCE_COLLECTION)
+    .where("date", ">=", from)
+    .where("date", "<=", to)
+    .get();
+
+  const attendance = attSnap.docs.map(d => d.data());
+
+  // 3) users & shifts vẫn có thể get full (ít record hơn nhiều)
   const usersSnap = await db.collection(USERS_COLLECTION).get();
   const users = usersSnap.docs.map(d => d.data());
   const userMap = {};
-  users.forEach(u => {
-    userMap[u.id] = u;
-  });
+  users.forEach(u => { userMap[u.id] = u; });
 
   const shiftsSnap = await db.collection("shifts").get();
   const shifts = shiftsSnap.docs.map(d => d.data());
   const shiftMap = {};
-  shifts.forEach(s => {
-    shiftMap[s.id] = s;
-  });
+  shifts.forEach(s => { shiftMap[s.id] = s; });
 
   // -------------------------
   // TỔNG QUAN TOÀN CÔNG TY
@@ -267,6 +265,7 @@ export async function summary(from, to) {
     details.push({
       date,
       userId: uid,
+      employeeCode: user.employeeCode || "N/A",  
       userName: user.name || user.email || "Không rõ",
       shiftId: asg.shiftId,
       shiftName: shift.name || "",
@@ -301,6 +300,7 @@ export async function summary(from, to) {
       const stat = perUser[u.id] || { assigned: 0, present: 0, absent: 0 };
       return {
         userId: u.id,
+        employeeCode: u.employeeCode || "N/A",
         name: u.name,
         email: u.email,
         assigned: stat.assigned,

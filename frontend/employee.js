@@ -9,7 +9,6 @@ let token = null;
 let userId = null;
 
 // ===================== MAIN =====================
-// ===================== MAIN =====================
 document.addEventListener("DOMContentLoaded", () => {
   const rawUser = localStorage.getItem("tkUser");
   if (!rawUser) return (window.location.href = "auth.html");
@@ -110,16 +109,22 @@ async function loadSummaryAndHistory(userId, token) {
     });
     const data = await res.json();
     if (data.success) {
-      historyData = data.data.map((item) => ({
-        date: item.date,
-        in: item.checkIn,
-        out: item.checkOut,
-        work: item.workMinutes,
-        note: item.note || "Checkin",
-      }));
+      historyData = data.data.map((item) => {
+        let d = item.date;
+        if (d.includes("/")) {
+          const [dd, mm, yyyy] = d.split("/");
+          d = `${yyyy}-${mm}-${dd}`;
+        }
+        return {
+          date: d,
+          in: item.checkIn,
+          out: item.checkOut,
+          work: item.workMinutes,
+          note: item.note || "Checkin",
+        };
+      });
 
-      await loadMyShifts(userId, token);
-
+      await loadMyShifts(userId, token, new Date());
 
       renderHistory(historyData);
       buildCalendar(currentDate);
@@ -128,45 +133,44 @@ async function loadSummaryAndHistory(userId, token) {
 }
 
 // ===================== LOAD USER SHIFTS =====================
-async function loadMyShifts(userId, token) {
+
+async function loadMyShifts(userId, token, currentDate) {
   try {
-    const res = await fetch(`${API_BASE}/shifts/user/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // Nếu không truyền → mặc định ngày hôm nay
+    currentDate = currentDate || new Date();
+
+    const y = currentDate.getFullYear();
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const monthKey = `${y}-${m}`;
+
+    const res = await fetch(
+      `${API_BASE}/shifts/user/${userId}?month=${monthKey}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
     const data = await res.json();
+
     if (!data.success || !Array.isArray(data.data)) {
       userShifts = [];
       return;
     }
 
-    // Lấy shift chi tiết theo shiftId
-    const detailed = [];
-
-    for (const rec of data.data) {
-      const r = await fetch(`${API_BASE}/shifts/${rec.shiftId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const json = await r.json();
-      if (json.success && json.data) {
-        let s = json.data;
-
-        // chuẩn hoá ngày yyyy-mm-dd
-        let d = s.date.trim();
-        if (d.includes("/")) {
-          const [dd, mm, yyyy] = d.split("/");
-          d = `${yyyy}-${mm}-${dd}`;
-        }
-
-        detailed.push({ ...s, date: d });
+    userShifts = data.data.map((s) => {
+      let d = (s.date || "").trim();
+      if (d.includes("/")) {
+        const [dd, mm, yyyy] = d.split("/");
+        d = `${yyyy}-${mm}-${dd}`;
       }
-    }
+      return { ...s, date: d };
+    });
 
-    userShifts = detailed;  // GÁN SHIFT THẬT
   } catch (err) {
+    console.error("loadMyShifts error:", err);
+    console.log("Shifts loaded:", userShifts);
+
     userShifts = [];
   }
 }
-
 
 
 // ===================== BUILD CALENDAR =====================
@@ -224,51 +228,70 @@ function buildCalendar(date) {
     const hasShift = shiftMap[key];
     const marked = attend.has(key);
 
-    // Ưu tiên 1: NGÀY CÓ CA
-    if (hasShift) {
-      cell.className = `cell shift ${marked ? "ok" : "no"}`;
-      cell.innerHTML = `
-          <div class='day'>${d}</div>
-          <div class='mark'>${marked ? "✓" : "✗"}</div>
-          <div class='shift-badge'>${hasShift.length} ca</div>
-      `;
+   if (hasShift) {
+    let mark = "";
+
+    if (thisDay <= today) {
+      if (marked) mark = "✓";  // có checkin
+      else mark = "✗";         // không checkin
     }
-    // Ưu tiên 2: NGÀY ĐÃ CHẤM CÔNG (nhưng không có ca)
-    else if (marked) {
+
+    cell.className = "cell shift";
+    if (marked && thisDay <= today) cell.classList.add("ok");
+    if (!marked && thisDay <= today) cell.classList.add("no");
+
+    cell.innerHTML = `
+      <div class='day'>${d}</div>
+      <div class='mark'>${mark}</div>
+      <div class='shift-badge'>${hasShift.length} ca</div>
+    `;
+  }
+    // Ngày không có ca thì KHÔNG BAO GIỜ được tick
+      else if (marked && hasShift && thisDay <= today)
+ {
+      // Chỉ tick nếu có checkin và không có ca nhưng là ngày quá khứ
       cell.className = "cell ok";
       cell.innerHTML = `
-          <div class='day'>${d}</div>
-          <div class='mark'>✓</div>
+        <div class='day'>${d}</div>
+        <div class='mark'>✓</div>
       `;
     }
-    // Ưu tiên 3: NGÀY TƯƠNG LAI
     else if (thisDay > today) {
       cell.className = "cell future";
       cell.innerHTML = `
-          <div class='day'>${d}</div>
-          <div class='mark'>&nbsp;</div>
+        <div class='day'>${d}</div>
+        <div class='mark'>&nbsp;</div>
       `;
     }
-    // Ưu tiên 4: NGÀY TRỐNG KHÔNG CÓ CA
     else {
       cell.className = "cell no-shift";
       cell.innerHTML = `
-          <div class='day'>${d}</div>
-          <div class='mark'>&nbsp;</div>
+        <div class='day'>${d}</div>
+        <div class='mark'>&nbsp;</div>
       `;
     }
+
     if (hasShift) {
         cell.style.cursor = "pointer";
-        cell.addEventListener("click", () => {
-            openShiftModal(hasShift[0]);
-        });
+        cell.addEventListener("click", () => openShiftListModal(hasShift));
     }
     calendarGrid.appendChild(cell);
     
   }
   renderActivity();   // cập nhật tổng quan theo tháng đang xem
-  prevM.onclick = () => buildCalendar(new Date(y, m - 1, 1));
-  nextM.onclick = () => buildCalendar(new Date(y, m + 1, 1));
+    prevM.onclick = async () => {
+  const newDate = new Date(y, m - 1, 1);
+  await loadMyShifts(userId, token, newDate);
+  buildCalendar(newDate);
+};
+
+nextM.onclick = async () => {
+  const newDate = new Date(y, m + 1, 1);
+  await loadMyShifts(userId, token, newDate);
+  buildCalendar(newDate);
+};
+
+
 }
 
 // ===================== HISTORY =====================
@@ -435,3 +458,33 @@ function openShiftModal(shift) {
 document.getElementById("closeShiftDetail").onclick = () => {
   document.getElementById("shiftDetailModal").classList.add("hidden");
 };
+
+function openShiftListModal(shifts) {
+  const modal = document.getElementById("shiftDetailModal");
+  const content = modal.querySelector(".modal-content");
+
+  content.innerHTML = "<h2>Danh sách ca làm</h2>";
+
+  shifts.forEach((s) => {
+    content.innerHTML += `
+      <div class="shift-item" onclick="openShiftModal(${JSON.stringify(s)})">
+        <strong>${s.shiftCode}</strong> – ${s.name}<br>
+        ${s.startTime} - ${s.endTime}
+      </div>
+    `;
+  });
+
+  content.innerHTML += `<button id="closeShiftDetail" class="btn-close">Đóng</button>`;
+
+  document.getElementById("closeShiftDetail").onclick = () =>
+    modal.classList.add("hidden");
+
+  modal.classList.remove("hidden");
+}
+
+
+
+function openShiftModalByIndex(date, index) {
+  const shift = userShifts.filter(s => s.date === date)[index];
+  openShiftModal(shift);
+}

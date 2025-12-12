@@ -202,7 +202,7 @@ body{
 .toolbar select{
   border:1px solid #e5e7eb;
   border-radius:999px;
-  padding:8px 14px;
+  padding:8px 12px;
   background:#fff;
   font-size:14px;
 }
@@ -530,7 +530,6 @@ dialog{
 }
 .date-input {
   width: 50px;
-  padding: 24px 20px;
   border-radius: 24px;
   border: 1px solid #3b4148;
   background: #111418;
@@ -844,7 +843,6 @@ dialog{
 /* Inputs */
 .input {
   width: 30%;
-  padding: 24px 14px;
   border-radius: 10px;
   border: 1px solid #d0d5dd;
   background: #fff;
@@ -907,4 +905,34 @@ dialog{
   margin-bottom: 4px;
   display: flex;
   justify-content: space-between;
+}
+/* ===== SPECIAL FIX: Modal Chi Tiết Báo Cáo ===== */
+#empDetailModal .modal-content {
+  width: 90vw !important;
+  max-width: 1200px !important;
+  max-height: 85vh !important;
+  overflow: hidden;
+  padding: 24px;
+}
+
+/* Khung chứa bảng: cho phép scroll ngang + scroll dọc */
+#empDetailTableWrap {
+  margin-top: 18px;
+  overflow-y: auto;
+  overflow-x: auto;
+  max-height: 70vh;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding-bottom: 12px;
+}
+
+/* Bảng rộng tối thiểu để không bị bó lại */
+#empDetailTableWrap table {
+  min-width: 1000px;
+}
+#empDetailTableWrap table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
 }

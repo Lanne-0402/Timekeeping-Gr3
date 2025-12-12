@@ -11,19 +11,24 @@ import {
 import authMiddleware from "../middleware/auth.middleware.js";
 import adminOnly from "../middleware/admin.middleware.js";
 
-
 const router = express.Router();
 
-// USER — Lấy lịch sử + tổng quan
+// USER — Lịch sử chấm công
 router.get("/history", authMiddleware, getHistory);
+
+// USER — Tổng quan
 router.get("/summary", authMiddleware, getSummary);
 
-// ADMIN — Lấy toàn bộ + 1 ngày + chỉnh giờ
-router.get("/", authMiddleware, adminOnly, adminGetAllAttendance);
-router.get("/:docId", authMiddleware, adminOnly, adminGetOneAttendance);
-router.patch("/:docId", authMiddleware, adminOnly, adminUpdateAttendance);
-// API Calendar tổng hợp
+// USER — Calendar
 router.get("/calendar/:userId", authMiddleware, getUserCalendar);
 
+// ADMIN — lấy tất cả
+router.get("/", authMiddleware, adminOnly, adminGetAllAttendance);
+
+// ADMIN — 1 record
+router.get("/:docId", authMiddleware, adminOnly, adminGetOneAttendance);
+
+// ADMIN — chỉnh record
+router.patch("/:docId", authMiddleware, adminOnly, adminUpdateAttendance);
 
 export default router;

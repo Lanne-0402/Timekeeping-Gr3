@@ -34,7 +34,15 @@ export const getSummary = async (req, res) => {
 // ADMIN — Lấy toàn bộ attendance
 export const adminGetAllAttendance = async (req, res) => {
   try {
-    const data = await adminFetchAllAttendanceService();
+    const { from, to } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu from/to (YYYY-MM-DD)",
+      });
+    }
+
+    const data = await adminFetchAllAttendanceService(from, to);
     return res.json({ success: true, data });
   } catch (err) {
     console.error("adminGetAllAttendance error:", err);

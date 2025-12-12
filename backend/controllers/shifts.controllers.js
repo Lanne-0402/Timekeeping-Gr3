@@ -43,14 +43,19 @@ export const assignShift = async (req, res) => {
 
 export const getUserShifts = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const data = await getUserShiftsService(userId);
-    return res.json({ success: true, data });
+    const { userId } = req.params;
+    const { month } = req.query; // ví dụ "2025-11"
+
+    const result = await getUserShiftsService(userId, month);
+    return res.json({ success: true, data: result });
   } catch (err) {
     console.error("getUserShifts error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: err.message || "Server error" });
   }
 };
+
 
 export const deleteShift = async (req, res) => {
   try {

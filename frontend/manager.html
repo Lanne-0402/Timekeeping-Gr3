@@ -93,6 +93,12 @@
           <div class="toolbar">
             <h2>Quản lý ca làm</h2>
             <div class="filters">
+              <input type="text" id="searchShift" placeholder="Tìm ca" class="search-box"/>
+              <button id="btnReloadEmployees" class="icon-refresh">
+                <i class="fa-solid fa-rotate-right"></i>
+              </button>  
+            </div>
+            <div class="filters">
               <input id="shiftDate" placeholder="Chọn ngày…" class="date-input">
 
               <input id="shiftStart" type="time">
@@ -315,15 +321,13 @@
   </div>
   <div id="empDetailModal" class="modal hidden">
     <div class="modal-content" style="width:800px; max-height:90vh; overflow:auto;">
-      <h2 id="detailEmpName">Chi tiết nhân viên</h2>
-
-      <div id="empDetailTableWrap" class="table-wrap" style="margin-top:16px;">
-        <!-- JS fill -->
-      </div>
-
-      <div style="text-align:right; margin-top:16px;">
+      <h2 id="detailEmpName">Chi tiết nhân viên <span></span></h2>
+      <div style="text-align:right;">
         <button id="btnCloseEmpDetail" class="pill-btn outline">Đóng</button>
       </div>
+      <div id="empDetailTableWrap" class="table-wrap" style="margin-top:16px;">
+        <!-- JS fill -->
+      </div>      
     </div>
   </div>
   <div id="presentModal" class="modal hidden">

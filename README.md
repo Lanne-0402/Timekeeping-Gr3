@@ -69,7 +69,8 @@ password: admin123
 
 Nhân viên mẫu (đăng nhập bất cứ tài khoản nào đều được, pass chung:12345678)
 
-nv1@example.com → 12345678  
-nv2@example.com → 12345678  
+a@example.com → 12345678  
+b@example.com → 12345678  
 ...  
-nv10@example.com → 12345678  
+g@example.com → 12345678  
+(theo bảng chữ cái từ a -> g)
