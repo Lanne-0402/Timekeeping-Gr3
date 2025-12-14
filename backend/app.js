@@ -19,7 +19,6 @@ const app = express();
 
 
 
-
 app.use(express.json());
 // CORS FIX for Vite + all HTTP methods
 app.use(cors({
