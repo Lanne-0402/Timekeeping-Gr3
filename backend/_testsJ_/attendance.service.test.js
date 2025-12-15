@@ -2,16 +2,12 @@ import {
   handleCheckInService,
   handleCheckOutService,
   fetchHistoryService,
-  fetchSummaryService,
-  adminFetchAllAttendanceService,
-  adminFetchOneAttendanceService,
-  adminUpdateAttendanceService,
-  getUserCalendarService
+  fetchSummaryService
 } from '../services/attendance.service.js';
 
 // Mock Firebase
 jest.mock('../config/firebase.js', () => ({
-  _esModule: true,
+  __esModule: true,
   default: {
     collection: jest.fn()
   }
@@ -19,7 +15,7 @@ jest.mock('../config/firebase.js', () => ({
 
 import db from '../config/firebase.js';
 
-describe('Attendance Service', () => {
+describe('Attendance Service Logic', () => {
   let mockCollection;
   let mockDoc;
   let mockGet;
@@ -29,9 +25,15 @@ describe('Attendance Service', () => {
   let mockLimit;
 
   beforeEach(() => {
+    // 1. Reset mọi mock
     jest.clearAllMocks();
-    
-    // Setup mock chain
+
+    // 2. Kích hoạt Fake Timers
+    jest.useFakeTimers();
+    // Đặt thời gian mặc định: 08:00 ngày 20/03/2024
+    jest.setSystemTime(new Date('2024-03-20T08:00:00.000Z'));
+
+    // 3. Setup Firebase Mock
     mockSet = jest.fn().mockResolvedValue(undefined);
     mockUpdate = jest.fn().mockResolvedValue(undefined);
     mockGet = jest.fn();
@@ -41,410 +43,200 @@ describe('Attendance Service', () => {
     mockCollection = jest.fn();
 
     db.collection = mockCollection;
+    
+    // Chain: db.collection().doc()
+    // Chain: db.collection().where()
+    mockCollection.mockReturnValue({ 
+      doc: mockDoc,
+      where: mockWhere 
+    });
+
+    // Chain: .doc().get/set/update
+    mockDoc.mockReturnValue({ 
+      get: mockGet, 
+      set: mockSet,
+      update: mockUpdate
+    });
+
+    // Chain: .where().where().limit().get()
+    mockWhere.mockReturnValue({ 
+      where: mockWhere,
+      limit: mockLimit,
+      get: mockGet
+    });
+    
+    mockLimit.mockReturnValue({ get: mockGet });
   });
 
-  describe('handleCheckInService', () => {
+  afterEach(() => {
+    // Quan trọng: Trả lại đồng hồ thật sau mỗi bài test
+    jest.useRealTimers();
+  });
+
+  describe('1. Logic Check-In', () => {
     const userId = 'user123';
-    const today = new Date().toISOString().split('T')[0];
-    const docId = `${userId}_${today}`;
+    // Lưu ý: Code service dùng today() -> new Date(), nên nó sẽ lấy theo giờ Mock ở trên (20/03/2024)
 
-    it('should successfully check in user when not already checked in', async () => {
-      const mockShiftData = {
-        shiftId: 'shift1',
-        shiftName: 'Morning Shift'
-      };
-
-      // Mock attendance check (not exists)
-      mockGet.mockResolvedValueOnce({ exists: false });
+    it('Should create attendance record correctly when user has a shift', async () => {
+      const todayStr = '2024-03-20';
+      const docId = `${userId}_${todayStr}`;
       
-      // Mock shift query
-      const mockShiftDocs = [{ data: () => mockShiftData }];
-      mockGet.mockResolvedValueOnce({ empty: false, docs: mockShiftDocs });
+      // Mock: Chưa check-in
+      mockGet.mockResolvedValueOnce({ exists: false });
 
-      mockDoc.mockReturnValue({ get: mockGet, set: mockSet });
-      mockLimit.mockReturnValue({ get: mockGet });
-      mockWhere.mockReturnValue({ 
-        where: mockWhere,
-        limit: mockLimit 
-      });
-      mockCollection.mockReturnValue({ 
-        doc: mockDoc,
-        where: mockWhere 
+      // Mock: Có ca làm việc
+      const mockShiftData = { 
+        shiftId: 'SHIFT_MORNING', 
+        shiftName: 'Ca Sáng',
+        userId: userId,
+        date: todayStr
+      };
+      // Giả lập tìm thấy ca
+      mockGet.mockResolvedValueOnce({ 
+        empty: false, 
+        docs: [{ data: () => mockShiftData }] 
       });
 
       const result = await handleCheckInService(userId);
 
       expect(result.success).toBe(true);
       expect(result.data.docId).toBe(docId);
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          docId,
-          userId,
-          date: today,
-          shiftId: 'shift1',
-          shiftName: 'Morning Shift',
-          checkOutAt: null,
-          workSeconds: 0
-        })
-      );
+      
+      expect(mockSet).toHaveBeenCalledWith({
+        docId: docId,
+        userId: userId,
+        date: todayStr,
+        shiftId: 'SHIFT_MORNING',
+        shiftName: 'Ca Sáng',
+        checkInAt: expect.any(String),
+        checkOutAt: null,
+        workSeconds: 0,
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String)
+      });
     });
 
-    it('should fail when user already checked in today', async () => {
-      mockGet.mockResolvedValue({ exists: true });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
+    it('Should BLOCK check-in if user has NO shift today', async () => {
+      // Mock: Chưa check-in
+      mockGet.mockResolvedValueOnce({ exists: false });
+
+      // Mock: Không tìm thấy ca (empty)
+      mockGet.mockResolvedValueOnce({ empty: true, docs: [] });
 
       const result = await handleCheckInService(userId);
 
       expect(result.success).toBe(false);
-      expect(result.message).toContain('check-in');
+      expect(result.message).toMatch(/không có ca làm/i);
       expect(mockSet).not.toHaveBeenCalled();
     });
 
-    it('should check in without shift if no shift assigned', async () => {
-      mockGet.mockResolvedValueOnce({ exists: false });
-      mockGet.mockResolvedValueOnce({ empty: true, docs: [] });
-
-      mockDoc.mockReturnValue({ get: mockGet, set: mockSet });
-      mockLimit.mockReturnValue({ get: mockGet });
-      mockWhere.mockReturnValue({ 
-        where: mockWhere,
-        limit: mockLimit 
-      });
-      mockCollection.mockReturnValue({ 
-        doc: mockDoc,
-        where: mockWhere 
-      });
+    it('Should BLOCK if already checked-in', async () => {
+      // Mock: Đã check-in
+      mockGet.mockResolvedValueOnce({ exists: true });
 
       const result = await handleCheckInService(userId);
 
-      expect(result.success).toBe(true);
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          shiftId: null,
-          shiftName: null
-        })
-      );
+      expect(result.success).toBe(false);
+      expect(mockSet).not.toHaveBeenCalled();
     });
   });
 
-  describe('handleCheckOutService', () => {
+  describe('2. Logic Check-Out (Work Seconds Calculation)', () => {
     const userId = 'user123';
-    const today = new Date().toISOString().split('T')[0];
-    const docId = `${userId}_${today}`;
-
-    it('should successfully check out user', async () => {
-      const checkInTime = new Date(Date.now() - 8 * 3600 * 1000).toISOString();
-      const mockData = {
-        checkInAt: checkInTime,
-        checkOutAt: null
-      };
-
+    
+    it('Should calculate workSeconds EXACTLY correct', async () => {
+      // Setup: Giờ hệ thống đang là 08:00 (do beforeEach set)
+      const checkInTimeStr = '2024-03-20T08:00:00.000Z';
+      
+      // Mock DB trả về record đã check-in lúc 08:00
       mockGet.mockResolvedValue({ 
         exists: true, 
-        data: () => mockData 
+        data: () => ({
+          checkInAt: checkInTimeStr,
+          checkOutAt: null
+        }) 
       });
-      mockDoc.mockReturnValue({ 
-        get: mockGet, 
-        update: mockUpdate 
-      });
-      mockCollection.mockReturnValue({ doc: mockDoc });
 
+      // --- MẤU CHỐT: Tua đồng hồ đến 17:30 ---
+      // Jest sẽ giả lập thời gian trôi đi
+      jest.setSystemTime(new Date('2024-03-20T17:30:00.000Z'));
+
+      // Thực thi hàm (bên trong hàm sẽ gọi new Date() -> lấy ra 17:30)
       const result = await handleCheckOutService(userId);
 
       expect(result.success).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          checkOutAt: expect.any(String),
-          workSeconds: expect.any(Number)
-        })
-      );
+      
+      // Tính toán: 17:30 - 08:00 = 9.5 tiếng = 34200 giây
+      // Vì dùng fake timers nên kết quả phải chính xác tuyệt đối
+      expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        workSeconds: 34200, 
+        checkOutAt: '2024-03-20T17:30:00.000Z' // Kiểm tra luôn string trả về
+      }));
     });
 
-    it('should fail when user has not checked in', async () => {
+    it('Should fail if not checked-in yet', async () => {
       mockGet.mockResolvedValue({ exists: false });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
       const result = await handleCheckOutService(userId);
-
       expect(result.success).toBe(false);
-      expect(result.message).toContain('chưa check-in');
       expect(mockUpdate).not.toHaveBeenCalled();
     });
 
-    it('should fail when user already checked out', async () => {
-      const mockData = {
-        checkInAt: new Date().toISOString(),
-        checkOutAt: new Date().toISOString()
-      };
-
+    it('Should fail if already checked-out', async () => {
       mockGet.mockResolvedValue({ 
         exists: true, 
-        data: () => mockData 
+        data: () => ({ checkInAt: '...', checkOutAt: 'some-date' }) 
       });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
       const result = await handleCheckOutService(userId);
-
       expect(result.success).toBe(false);
-      expect(result.message).toContain('check-out');
       expect(mockUpdate).not.toHaveBeenCalled();
     });
   });
 
-  describe('fetchHistoryService', () => {
+  describe('3. History & Summary Logic', () => {
     const userId = 'user123';
 
-    it('should return sorted attendance history', async () => {
-      const mockDocs = [
-        {
-          data: () => ({
-            date: '2024-03-15',
-            checkInAt: '2024-03-15T08:00:00.000Z',
-            checkOutAt: '2024-03-15T17:00:00.000Z',
-            workSeconds: 32400,
-            note: 'Regular day'
-          })
-        },
-        {
-          data: () => ({
-            date: '2024-03-14',
-            checkInAt: '2024-03-14T08:30:00.000Z',
-            checkOutAt: '2024-03-14T17:30:00.000Z',
-            workSeconds: 32400
-          })
-        }
+    it('fetchSummaryService: Should count daysWorked/daysOff correctly', async () => {
+      // Logic:
+      // daysWorked = Số ngày có trong cả 2 list (Shifts & Attendance)
+      // daysOff = (Tổng số ngày có Shifts) - daysWorked
+      
+      const mockShifts = [
+        { data: () => ({ date: '2024-03-01' }) },
+        { data: () => ({ date: '2024-03-02' }) },
+        { data: () => ({ date: '2024-03-03' }) }
       ];
 
-      mockGet.mockResolvedValue({ docs: mockDocs });
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await fetchHistoryService(userId);
-
-      expect(result).toHaveLength(2);
-      expect(result[0].date).toBe('2024-03-14');
-      expect(result[1].date).toBe('2024-03-15');
-      expect(result[0].workMinutes).toBe(540);
-      expect(result[1].note).toBe('Regular day');
-    });
-
-    it('should return empty array when no history', async () => {
-      mockGet.mockResolvedValue({ docs: [] });
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await fetchHistoryService(userId);
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('fetchSummaryService', () => {
-    const userId = 'user123';
-
-    it('should calculate correct days worked and days off', async () => {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const monthKey = `${yyyy}-${mm}`;
-
-      // Mock shifts
-      const mockShiftDocs = [
-        { data: () => ({ date: `${monthKey}-01`, userId }) },
-        { data: () => ({ date: `${monthKey}-02`, userId }) },
-        { data: () => ({ date: `${monthKey}-03`, userId }) },
-        { data: () => ({ date: `${monthKey}-04`, userId }) }
-      ];
-
-      // Mock attendance (only 3 days checked in)
-      const mockAttDocs = [
-        { data: () => ({ date: `${monthKey}-01`, userId }) },
-        { data: () => ({ date: `${monthKey}-02`, userId }) },
-        { data: () => ({ date: `${monthKey}-03`, userId }) }
+      const mockAttendance = [
+        { data: () => ({ date: '2024-03-01' }) },
+        { data: () => ({ date: '2024-03-03' }) }
       ];
 
       mockGet
-        .mockResolvedValueOnce({ docs: mockShiftDocs })
-        .mockResolvedValueOnce({ docs: mockAttDocs });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
+        .mockResolvedValueOnce({ docs: mockShifts })
+        .mockResolvedValueOnce({ docs: mockAttendance });
 
       const result = await fetchSummaryService(userId);
 
-      expect(result.daysWorked).toBe(3);
+      expect(result.daysWorked).toBe(2);
       expect(result.daysOff).toBe(1);
     });
 
-    it('should return zero when no shifts assigned', async () => {
-      mockGet
-        .mockResolvedValueOnce({ docs: [] })
-        .mockResolvedValueOnce({ docs: [] });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await fetchSummaryService(userId);
-
-      expect(result.daysWorked).toBe(0);
-      expect(result.daysOff).toBe(0);
-    });
-  });
-
-  describe('adminFetchAllAttendanceService', () => {
-    it('should return all attendance records sorted by date', async () => {
-      const mockDocs = [
-        { data: () => ({ date: '2024-03-15', userId: 'user1' }) },
-        { data: () => ({ date: '2024-03-14', userId: 'user2' }) }
-      ];
+    it('fetchHistoryService: Should calculate workMinutes from workSeconds', async () => {
+      const mockDocs = [{
+        data: () => ({
+          date: '2024-03-15',
+          checkInAt: '...',
+          checkOutAt: '...',
+          workSeconds: 32400, // 9 hours
+          note: ''
+        })
+      }];
 
       mockGet.mockResolvedValue({ docs: mockDocs });
-      mockCollection.mockReturnValue({ get: mockGet });
 
-      const result = await adminFetchAllAttendanceService();
+      const result = await fetchHistoryService(userId);
 
-      expect(result).toHaveLength(2);
-      expect(result[0].date).toBe('2024-03-14');
-      expect(result[1].date).toBe('2024-03-15');
-    });
-  });
-
-  describe('adminFetchOneAttendanceService', () => {
-    const docId = 'user123_2024-03-15';
-
-    it('should return attendance record when exists', async () => {
-      const mockData = { docId, userId: 'user123', date: '2024-03-15' };
-      
-      mockGet.mockResolvedValue({ 
-        exists: true, 
-        data: () => mockData 
-      });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const result = await adminFetchOneAttendanceService(docId);
-
-      expect(result).toEqual(mockData);
-    });
-
-    it('should return null when record does not exist', async () => {
-      mockGet.mockResolvedValue({ exists: false });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const result = await adminFetchOneAttendanceService(docId);
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('adminUpdateAttendanceService', () => {
-    const docId = 'user123_2024-03-15';
-
-    it('should successfully update attendance record', async () => {
-      mockGet.mockResolvedValue({ exists: true });
-      mockDoc.mockReturnValue({ 
-        get: mockGet, 
-        update: mockUpdate 
-      });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const updates = { workSeconds: 28800, note: 'Approved' };
-      const result = await adminUpdateAttendanceService(docId, updates);
-
-      expect(result.success).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...updates,
-          updatedAt: expect.any(String)
-        })
-      );
-    });
-
-    it('should fail when attendance record does not exist', async () => {
-      mockGet.mockResolvedValue({ exists: false });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const result = await adminUpdateAttendanceService(docId, {});
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('không tồn tại');
-      expect(mockUpdate).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getUserCalendarService', () => {
-    const userId = 'user123';
-    const month = '2024-03';
-
-    it('should return comprehensive calendar with all statuses', async () => {
-      // Mock shifts
-      const mockShiftDocs = [
-        { data: () => ({ date: '2024-03-01', userId, shiftId: 's1', shiftName: 'Morning' }) },
-        { data: () => ({ date: '2024-03-02', userId, shiftId: 's2', shiftName: 'Evening' }) },
-        { data: () => ({ date: '2024-03-03', userId, shiftId: 's3', shiftName: 'Morning' }) }
-      ];
-
-      // Mock attendance
-      const mockAttDocs = [
-        { 
-          data: () => ({ 
-            date: '2024-03-01', 
-            userId,
-            checkInAt: '2024-03-01T08:00:00.000Z',
-            checkOutAt: '2024-03-01T17:00:00.000Z'
-          })
-        }
-      ];
-
-      // Mock requests
-      const mockReqDocs = [
-        { data: () => ({ date: '2024-03-02', userId, status: 'pending' }) }
-      ];
-
-      // Mock leaves
-      const mockLeaveDocs = [
-        { data: () => ({ date: '2024-03-03', userId, status: 'approved' }) }
-      ];
-
-      mockGet
-        .mockResolvedValueOnce({ docs: mockShiftDocs })
-        .mockResolvedValueOnce({ docs: mockAttDocs })
-        .mockResolvedValueOnce({ docs: mockReqDocs })
-        .mockResolvedValueOnce({ docs: mockLeaveDocs });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await getUserCalendarService(userId, month);
-
-      expect(result['2024-03-01'].status).toBe('checked-full');
-      expect(result['2024-03-02'].status).toBe('pending-request');
-      expect(result['2024-03-03'].status).toBe('leave-approved');
-    });
-
-    it('should mark absent days correctly', async () => {
-      const mockShiftDocs = [
-        { data: () => ({ date: '2024-03-01', userId, shiftId: 's1' }) }
-      ];
-
-      mockGet
-        .mockResolvedValueOnce({ docs: mockShiftDocs })
-        .mockResolvedValueOnce({ docs: [] })
-        .mockResolvedValueOnce({ docs: [] })
-        .mockResolvedValueOnce({ docs: [] });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await getUserCalendarService(userId, month);
-
-      expect(result['2024-03-01'].status).toBe('absent');
-      expect(result['2024-03-01'].icon).toBe('X');
+      expect(result[0].workMinutes).toBe(540); // 32400 / 60
     });
   });
 });

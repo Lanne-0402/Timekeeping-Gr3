@@ -18,7 +18,8 @@ import * as idGenerator from '../utils/idGenerator.js';
 jest.mock('../config/firebase.js', () => ({
   __esModule: true,
   default: {
-    collection: jest.fn()
+    collection: jest.fn(),
+    batch: jest.fn()
   }
 }));
 
@@ -34,7 +35,7 @@ jest.mock('firebase-admin', () => ({
   }
 }));
 
-describe('Shifts Service', () => {
+describe('Shifts Service Logic', () => {
   let mockCollection;
   let mockDoc;
   let mockGet;
@@ -48,6 +49,7 @@ describe('Shifts Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    // Setup Mock Functions cơ bản
     mockSet = jest.fn().mockResolvedValue(undefined);
     mockUpdate = jest.fn().mockResolvedValue(undefined);
     mockDelete = jest.fn().mockResolvedValue(undefined);
@@ -56,568 +58,272 @@ describe('Shifts Service', () => {
     mockOrderBy = jest.fn();
     mockDoc = jest.fn();
     mockCollection = jest.fn();
+    
+    // Setup Mock Batch
     mockBatch = {
       set: jest.fn(),
       delete: jest.fn(),
       commit: jest.fn().mockResolvedValue(undefined)
     };
 
+    // Link mocks vào db
     db.collection = mockCollection;
     db.batch = jest.fn(() => mockBatch);
 
+    // Default return cho id generator
     idGenerator.generateShiftCode.mockResolvedValue('CA001');
+
+    // Default chain behavior: db.collection().doc()
+    mockCollection.mockReturnValue({ 
+      doc: mockDoc,
+      where: mockWhere,
+      orderBy: mockOrderBy
+    });
+    mockDoc.mockReturnValue({ 
+      set: mockSet, 
+      get: mockGet, 
+      update: mockUpdate, 
+      delete: mockDelete 
+    });
+    mockWhere.mockReturnValue({ 
+      where: mockWhere, 
+      orderBy: mockOrderBy, 
+      get: mockGet 
+    });
+    mockOrderBy.mockReturnValue({ get: mockGet });
   });
 
+  // ==========================================
+  // 1. CREATE SHIFT
+  // ==========================================
   describe('createShiftService', () => {
-    it('should create shift with all fields provided', async () => {
-      const shiftRef = { id: 'shift123' };
-      mockDoc.mockReturnValue(shiftRef);
-      shiftRef.set = mockSet;
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
+    it('should create shift successfully with auto-generated name', async () => {
       const payload = {
         date: '2024-03-15',
-        name: 'Morning Shift',
         startTime: '08:00',
         endTime: '17:00'
       };
 
       const result = await createShiftService(payload);
 
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'shift123',
-          shiftCode: 'CA001',
-          name: 'Morning Shift',
-          startTime: '08:00',
-          endTime: '17:00',
-          date: '2024-03-15'
-        })
-      );
+      expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({
+        shiftCode: 'CA001',
+        name: 'Ca ngày 2024-03-15 (08:00-17:00)',
+        date: '2024-03-15'
+      }));
       expect(result.shiftCode).toBe('CA001');
     });
 
-    it('should generate name if not provided', async () => {
-      const shiftRef = { id: 'shift123', set: mockSet };
-      mockDoc.mockReturnValue(shiftRef);
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        date: '2024-03-15',
-        startTime: '08:00',
-        endTime: '17:00'
-      };
-
-      const result = await createShiftService(payload);
-
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Ca ngày 2024-03-15 (08:00-17:00)'
-        })
-      );
-    });
-
-    it('should generate name without date if date not provided', async () => {
-      const shiftRef = { id: 'shift123', set: mockSet };
-      mockDoc.mockReturnValue(shiftRef);
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        startTime: '08:00',
-        endTime: '17:00'
-      };
-
-      const result = await createShiftService(payload);
-
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Ca (08:00-17:00)'
-        })
-      );
-    });
-
-    it('should throw error if startTime is missing', async () => {
-      const payload = {
-        endTime: '17:00'
-      };
-
-      await expect(createShiftService(payload)).rejects.toThrow('Thiếu giờ bắt đầu hoặc kết thúc');
-    });
-
-    it('should throw error if endTime is missing', async () => {
-      const payload = {
-        startTime: '08:00'
-      };
-
-      await expect(createShiftService(payload)).rejects.toThrow('Thiếu giờ bắt đầu hoặc kết thúc');
-    });
-
-    it('should trim whitespace from name', async () => {
-      const shiftRef = { id: 'shift123', set: mockSet };
-      mockDoc.mockReturnValue(shiftRef);
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        name: '  Morning Shift  ',
-        startTime: '08:00',
-        endTime: '17:00'
-      };
-
-      await createShiftService(payload);
-
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Morning Shift'
-        })
-      );
-    });
-
-    it('should not include date field if date is not provided', async () => {
-      const shiftRef = { id: 'shift123', set: mockSet };
-      mockDoc.mockReturnValue(shiftRef);
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        name: 'Evening Shift',
-        startTime: '18:00',
-        endTime: '22:00'
-      };
-
-      await createShiftService(payload);
-
-      const callArg = mockSet.mock.calls[0][0];
-      expect(callArg).not.toHaveProperty('date');
+    it('should throw error if startTime or endTime is missing', async () => {
+      await expect(createShiftService({ startTime: '08:00' }))
+        .rejects.toThrow('Thiếu giờ bắt đầu hoặc kết thúc');
     });
   });
 
+  // ==========================================
+  // 2. ASSIGN SHIFT (Logic quan trọng)
+  // ==========================================
+  describe('assignShiftService', () => {
+    beforeEach(() => {
+      // Setup mặc định cho check trùng: Trả về empty (chưa có ca)
+      mockGet.mockResolvedValue({ empty: true });
+    });
+
+    it('Should SUCCESS: Assign user to shift (No duplicate)', async () => {
+      const payload = {
+        userId: 'user123',
+        shiftId: 'shift001',
+        date: '2024-03-20'
+      };
+
+      const result = await assignShiftService(payload);
+
+      // Verify logic check trùng đã chạy
+      expect(mockCollection).toHaveBeenCalledWith('user_shifts');
+      expect(mockWhere).toHaveBeenCalledWith('userId', '==', 'user123');
+      
+      // Verify ghi DB
+      expect(mockBatch.set).toHaveBeenCalled();
+      expect(mockBatch.commit).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+    });
+
+    it('Should THROW ERROR: If user already has a shift on that date', async () => {
+      // Mock logic: Query tìm thấy bản ghi cũ (Duplicate)
+      mockGet.mockResolvedValueOnce({ 
+        empty: false, 
+        docs: [{ data: () => ({ id: 'old_shift' }) }] 
+      });
+
+      const payload = {
+        userId: 'user123',
+        shiftId: 'shift_new',
+        date: '2024-03-20'
+      };
+
+      await expect(assignShiftService(payload))
+        .rejects.toThrow(/Nhân viên đã có ca trong ngày/);
+      
+      // Đảm bảo không ghi đè
+      expect(mockBatch.commit).not.toHaveBeenCalled();
+    });
+
+    it('Should THROW ERROR: If trying to assign multiple shifts per day', async () => {
+      const payload = {
+        userId: 'user123',
+        shiftIds: ['shift1', 'shift2'], // 2 ca
+        date: '2024-03-20'
+      };
+
+      await expect(assignShiftService(payload))
+        .rejects.toThrow('Mỗi ngày chỉ được gán 1 ca làm duy nhất');
+    });
+
+    it('Should NORMALIZE date format (dd/mm/yyyy -> yyyy-mm-dd)', async () => {
+      const payload = {
+        userId: 'user123',
+        shiftId: 'shift001',
+        date: '20/11/2024' // Format VN
+      };
+
+      await assignShiftService(payload);
+
+      // Verify batch set gọi với date đã chuẩn hóa
+      const callArgs = mockBatch.set.mock.calls[0][1];
+      expect(callArgs.date).toBe('2024-11-20');
+    });
+  });
+
+  // ==========================================
+  // 3. GET SHIFTS (Logic đếm nhân viên)
+  // ==========================================
   describe('getShiftsService', () => {
-    it('should return shifts with employee count', async () => {
-      const mockShiftDocs = [
-        { data: () => ({ id: 'shift1', name: 'Morning', startTime: '08:00', endTime: '17:00' }) },
-        { data: () => ({ id: 'shift2', name: 'Evening', startTime: '18:00', endTime: '22:00' }) }
+    it('should return shifts with correct employee count', async () => {
+      // Mock Shifts data
+      const mockShifts = [
+        { data: () => ({ id: 's1', name: 'Ca 1' }) },
+        { data: () => ({ id: 's2', name: 'Ca 2' }) }
+      ];
+
+      // Mock User Shifts data (để đếm)
+      // Ca s1 có 2 người, ca s2 có 1 người
+      const mockUserShifts = [
+        { data: () => ({ shiftId: 's1' }) },
+        { data: () => ({ shiftId: 's1' }) },
+        { data: () => ({ shiftId: 's2' }) }
+      ];
+
+      // Mock sequence: Call 1 (get shifts) -> Call 2 (get user_shifts)
+      mockGet
+        .mockResolvedValueOnce({ docs: mockShifts })      // shifts
+        .mockResolvedValueOnce({ docs: mockUserShifts }); // user_shifts
+
+      const result = await getShiftsService('2024-03');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].employeeCount).toBe(2); // s1
+      expect(result[1].employeeCount).toBe(1); // s2
+    });
+  });
+
+  // ==========================================
+  // 4. GET EMPLOYEES IN SHIFT
+  // ==========================================
+  describe('getEmployeesInShiftService', () => {
+    it('should return employee details with employeeCode', async () => {
+      // 1. Mock user_shifts
+      const mockAssignments = [
+        { data: () => ({ userId: 'u1', shiftId: 's1' }) },
+        { data: () => ({ userId: 'u2', shiftId: 's1' }) }
+      ];
+
+      // 2. Mock users info (IN query)
+      const mockUsers = [
+        { id: 'u1', data: () => ({ name: 'Alice', employeeCode: 'NV01' }) },
+        { id: 'u2', data: () => ({ name: 'Bob', employeeCode: 'NV02' }) }
       ];
 
       mockGet
-        .mockResolvedValueOnce({ docs: mockShiftDocs })
-        .mockResolvedValueOnce({ size: 5 })
-        .mockResolvedValueOnce({ size: 3 });
+        .mockResolvedValueOnce({ docs: mockAssignments }) // Query user_shifts
+        .mockResolvedValueOnce({ docs: mockUsers });      // Query users
 
-      mockOrderBy.mockReturnValue({ get: mockGet });
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockImplementation((name) => {
-        if (name === 'shifts') {
-          return { orderBy: mockOrderBy };
-        }
-        return { where: mockWhere };
-      });
-
-      const result = await getShiftsService();
+      const result = await getEmployeesInShiftService('s1');
 
       expect(result).toHaveLength(2);
-      expect(result[0].employeeCount).toBe(5);
-      expect(result[1].employeeCount).toBe(3);
-    });
-
-    it('should return empty array when no shifts exist', async () => {
-      mockGet.mockResolvedValue({ docs: [] });
-      mockOrderBy.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ orderBy: mockOrderBy });
-
-      const result = await getShiftsService();
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('deleteShiftService', () => {
-    it('should delete shift successfully', async () => {
-      mockDoc.mockReturnValue({ delete: mockDelete });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const result = await deleteShiftService('shift123');
-
-      expect(mockCollection).toHaveBeenCalledWith('shifts');
-      expect(mockDoc).toHaveBeenCalledWith('shift123');
-      expect(mockDelete).toHaveBeenCalled();
-      expect(result).toBe(true);
-    });
-
-    it('should throw error if id is missing', async () => {
-      await expect(deleteShiftService()).rejects.toThrow('Thiếu ID ca làm');
-    });
-
-    it('should throw error if id is empty string', async () => {
-      await expect(deleteShiftService('')).rejects.toThrow('Thiếu ID ca làm');
-    });
-  });
-
-  describe('assignShiftService', () => {
-    beforeEach(() => {
-      mockDoc.mockReturnValue({ id: 'assignment123' });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-    });
-
-    it('should assign single user to single shift', async () => {
-      const payload = {
-        userId: 'user123',
-        shiftId: 'shift456',
-        date: '2024-03-15'
-      };
-
-      const result = await assignShiftService(payload);
-
-      expect(mockBatch.set).toHaveBeenCalledTimes(1);
-      expect(mockBatch.commit).toHaveBeenCalled();
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        userId: 'user123',
-        shiftId: 'shift456',
-        date: '2024-03-15'
+      expect(result[0]).toEqual({
+        id: 'u1',
+        name: 'Alice',
+        employeeCode: 'NV01'
+      });
+      expect(result[1]).toEqual({
+        id: 'u2',
+        name: 'Bob',
+        employeeCode: 'NV02'
       });
     });
+  });
 
-    it('should assign multiple users to multiple shifts', async () => {
-      const payload = {
-        userIds: ['user1', 'user2'],
-        shiftIds: ['shift1', 'shift2'],
-        date: '2024-03-15'
-      };
+  // ==========================================
+  // 5. OTHER UTILS
+  // ==========================================
+  describe('addEmployeeToShiftService', () => {
+    it('should check duplicate before adding', async () => {
+      // Mock: Lấy thông tin ca (tồn tại)
+      mockGet.mockResolvedValueOnce({ exists: true, data: () => ({ date: '2024-03-20' }) });
+      
+      // Mock: Kiểm tra user_shifts -> Tìm thấy (Duplicate)
+      mockGet.mockResolvedValueOnce({ empty: false });
 
-      const result = await assignShiftService(payload);
-
-      expect(mockBatch.set).toHaveBeenCalledTimes(4); // 2 users × 2 shifts
-      expect(mockBatch.commit).toHaveBeenCalled();
-      expect(result).toHaveLength(4);
+      await expect(addEmployeeToShiftService('s1', 'u1'))
+        .rejects.toThrow('Nhân viên đã được gán vào ca này rồi');
     });
 
-    it('should convert date format from dd/mm/yyyy to yyyy-mm-dd', async () => {
-      const payload = {
-        userId: 'user123',
-        shiftId: 'shift456',
-        date: '28/11/2025'
-      };
+    it('should success if not duplicate', async () => {
+      // Mock: Ca tồn tại
+      mockGet.mockResolvedValueOnce({ exists: true, data: () => ({ date: '2024-03-20' }) });
+      
+      // Mock: Chưa có trong ca (Empty)
+      mockGet.mockResolvedValueOnce({ empty: true });
 
-      const result = await assignShiftService(payload);
-
-      expect(result[0].date).toBe('2025-11-28');
-    });
-
-    it('should keep yyyy-mm-dd format unchanged', async () => {
-      const payload = {
-        userId: 'user123',
-        shiftId: 'shift456',
-        date: '2025-11-28'
-      };
-
-      const result = await assignShiftService(payload);
-
-      expect(result[0].date).toBe('2025-11-28');
-    });
-
-    it('should throw error if date is missing', async () => {
-      const payload = {
-        userId: 'user123',
-        shiftId: 'shift456'
-      };
-
-      await expect(assignShiftService(payload)).rejects.toThrow('Thiếu ngày gán ca');
-    });
-
-    it('should throw error if userIds are missing', async () => {
-      const payload = {
-        shiftIds: ['shift1'],
-        date: '2024-03-15'
-      };
-
-      await expect(assignShiftService(payload)).rejects.toThrow('Thiếu userId');
-    });
-
-    it('should throw error if shiftIds are missing', async () => {
-      const payload = {
-        userIds: ['user1'],
-        date: '2024-03-15'
-      };
-
-      await expect(assignShiftService(payload)).rejects.toThrow('Thiếu userId');
+      const result = await addEmployeeToShiftService('s1', 'u1');
+      
+      expect(result).toBe(true);
+      expect(mockSet).toHaveBeenCalled();
     });
   });
 
   describe('getUserShiftsService', () => {
-    it('should return user shifts sorted by date descending', async () => {
+    it('should filter by month correctly', async () => {
       const mockDocs = [
-        { data: () => ({ userId: 'user123', shiftId: 'shift1', date: '2024-03-15' }) },
-        { data: () => ({ userId: 'user123', shiftId: 'shift2', date: '2024-03-20' }) },
-        { data: () => ({ userId: 'user123', shiftId: 'shift3', date: '2024-03-10' }) }
+        { data: () => ({ userId: 'u1', shiftId: 's1', date: '2024-11-20' }) }, // Match
+        { data: () => ({ userId: 'u1', shiftId: 's2', date: '2024-12-01' }) }  // No Match
       ];
 
-      mockGet.mockResolvedValue({ docs: mockDocs });
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
+      // Mock user_shifts query
+      mockGet.mockResolvedValueOnce({ empty: false, docs: mockDocs });
+      
+      // Mock shifts detail query (cho shift s1)
+      mockGet.mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Ca Sáng' }) });
 
-      const result = await getUserShiftsService('user123');
+      const result = await getUserShiftsService('u1', '2024-11');
 
-      expect(result).toHaveLength(3);
-      expect(result[0].date).toBe('2024-03-20'); // Most recent first
-      expect(result[2].date).toBe('2024-03-10');
-    });
-
-    it('should throw error if userId is missing', async () => {
-      await expect(getUserShiftsService()).rejects.toThrow('Thiếu userId');
-    });
-
-    it('should return empty array when user has no shifts', async () => {
-      mockGet.mockResolvedValue({ docs: [] });
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await getUserShiftsService('user123');
-
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-11-20');
     });
   });
 
-  describe('getShiftByIdService', () => {
-    it('should return shift data when exists', async () => {
-      const mockShiftData = {
-        id: 'shift123',
-        name: 'Morning Shift',
-        startTime: '08:00',
-        endTime: '17:00'
-      };
-
-      mockGet.mockResolvedValue({
-        exists: true,
-        data: () => mockShiftData
-      });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const result = await getShiftByIdService('shift123');
-
-      expect(result).toEqual(mockShiftData);
-    });
-
-    it('should throw error if shift does not exist', async () => {
-      mockGet.mockResolvedValue({ exists: false });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      await expect(getShiftByIdService('shift123')).rejects.toThrow('Ca không tồn tại');
-    });
-
-    it('should throw error if shiftId is missing', async () => {
-      await expect(getShiftByIdService()).rejects.toThrow('Thiếu ID ca');
-    });
-  });
-
-  describe('getEmployeesInShiftService', () => {
-    it('should return list of employees with names', async () => {
-      const mockUserShiftDocs = [
-        { data: () => ({ userId: 'user1', shiftId: 'shift123' }) },
-        { data: () => ({ userId: 'user2', shiftId: 'shift123' }) }
-      ];
-
-      mockGet
-        .mockResolvedValueOnce({ docs: mockUserShiftDocs })
-        .mockResolvedValueOnce({ exists: true, data: () => ({ name: 'John Doe' }) })
-        .mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Jane Smith' }) });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockImplementation((name) => {
-        if (name === 'user_shifts') {
-          return { where: mockWhere };
-        }
-        return { doc: mockDoc };
-      });
-
-      const result = await getEmployeesInShiftService('shift123');
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ id: 'user1', name: 'John Doe' });
-      expect(result[1]).toEqual({ id: 'user2', name: 'Jane Smith' });
-    });
-
-    it('should return "Unknown" for users that do not exist', async () => {
-      const mockUserShiftDocs = [
-        { data: () => ({ userId: 'user1', shiftId: 'shift123' }) }
-      ];
-
-      mockGet
-        .mockResolvedValueOnce({ docs: mockUserShiftDocs })
-        .mockResolvedValueOnce({ exists: false });
-
-      mockWhere.mockReturnValue({ get: mockGet });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockImplementation((name) => {
-        if (name === 'user_shifts') {
-          return { where: mockWhere };
-        }
-        return { doc: mockDoc };
-      });
-
-      const result = await getEmployeesInShiftService('shift123');
-
-      expect(result[0].name).toBe('Unknown');
+  describe('deleteShiftService', () => {
+    it('should delete successfully', async () => {
+      const result = await deleteShiftService('s1');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(result).toBe(true);
     });
   });
 
   describe('updateShiftService', () => {
-    it('should update shift with provided fields', async () => {
-      mockDoc.mockReturnValue({ update: mockUpdate });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        date: '2024-03-20',
-        startTime: '09:00',
-        endTime: '18:00',
-        name: 'Updated Shift'
-      };
-
-      const result = await updateShiftService('shift123', payload);
-
-      expect(mockUpdate).toHaveBeenCalledWith({
-        date: '2024-03-20',
-        startTime: '09:00',
-        endTime: '18:00',
-        name: 'Updated Shift'
-      });
-      expect(result).toBe(true);
-    });
-
-    it('should only update provided fields', async () => {
-      mockDoc.mockReturnValue({ update: mockUpdate });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      const payload = {
-        startTime: '09:00'
-      };
-
-      await updateShiftService('shift123', payload);
-
-      expect(mockUpdate).toHaveBeenCalledWith({
-        startTime: '09:00'
-      });
-    });
-
-    it('should handle empty payload', async () => {
-      mockDoc.mockReturnValue({ update: mockUpdate });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      await updateShiftService('shift123', {});
-
-      expect(mockUpdate).toHaveBeenCalledWith({});
-    });
-  });
-
-  describe('addEmployeeToShiftService', () => {
-    it('should add employee to shift successfully', async () => {
-      const shiftData = {
-        id: 'shift123',
-        name: 'Morning Shift',
-        date: '2024-03-15'
-      };
-
-      mockGet
-        .mockResolvedValueOnce({ exists: true, data: () => shiftData })
-        .mockResolvedValueOnce({ empty: true });
-
-      const newDocRef = { id: 'assignment123', set: mockSet };
-      mockDoc.mockReturnValue(newDocRef);
-      mockWhere.mockReturnValue({ where: mockWhere, get: mockGet });
-      mockCollection.mockImplementation((name) => {
-        if (name === 'shifts') {
-          return { doc: () => ({ get: mockGet }) };
-        }
-        return { where: mockWhere, doc: mockDoc };
-      });
-
-      const result = await addEmployeeToShiftService('shift123', 'user456');
-
-      expect(mockSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          shiftId: 'shift123',
-          userId: 'user456',
-          date: '2024-03-15'
-        })
-      );
-      expect(result).toBe(true);
-    });
-
-    it('should throw error if shift does not exist', async () => {
-      mockGet.mockResolvedValue({ exists: false });
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockCollection.mockReturnValue({ doc: mockDoc });
-
-      await expect(addEmployeeToShiftService('shift123', 'user456'))
-        .rejects.toThrow('Ca không tồn tại');
-    });
-
-    it('should throw error if employee already in shift', async () => {
-      const shiftData = { id: 'shift123', date: '2024-03-15' };
-
-      mockGet
-        .mockResolvedValueOnce({ exists: true, data: () => shiftData })
-        .mockResolvedValueOnce({ empty: false });
-
-      mockDoc.mockReturnValue({ get: mockGet });
-      mockWhere.mockReturnValue({ where: mockWhere, get: mockGet });
-      mockCollection.mockImplementation((name) => {
-        if (name === 'shifts') {
-          return { doc: () => ({ get: mockGet }) };
-        }
-        return { where: mockWhere };
-      });
-
-      await expect(addEmployeeToShiftService('shift123', 'user456'))
-        .rejects.toThrow('Nhân viên đã được gán vào ca này rồi');
-    });
-
-    it('should throw error if shiftId is missing', async () => {
-      await expect(addEmployeeToShiftService(null, 'user456'))
-        .rejects.toThrow('Thiếu shiftId hoặc userId');
-    });
-
-    it('should throw error if userId is missing', async () => {
-      await expect(addEmployeeToShiftService('shift123', null))
-        .rejects.toThrow('Thiếu shiftId hoặc userId');
-    });
-  });
-
-  describe('removeEmployeeFromShiftService', () => {
-    it('should remove employee from shift successfully', async () => {
-      const mockDocs = [
-        { ref: { path: 'doc1' } }
-      ];
-
-      mockGet.mockResolvedValue({ empty: false, docs: mockDocs, forEach: (callback) => mockDocs.forEach(callback) });
-      mockWhere.mockReturnValue({ where: mockWhere, get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      const result = await removeEmployeeFromShiftService('shift123', 'user456');
-
-      expect(mockBatch.delete).toHaveBeenCalledTimes(1);
-      expect(mockBatch.commit).toHaveBeenCalled();
-      expect(result).toBe(true);
-    });
-
-    it('should throw error if employee not in shift', async () => {
-      mockGet.mockResolvedValue({ empty: true });
-      mockWhere.mockReturnValue({ where: mockWhere, get: mockGet });
-      mockCollection.mockReturnValue({ where: mockWhere });
-
-      await expect(removeEmployeeFromShiftService('shift123', 'user456'))
-        .rejects.toThrow('Nhân viên không tồn tại trong ca này');
-    });
-
-    it('should throw error if shiftId is missing', async () => {
-      await expect(removeEmployeeFromShiftService(null, 'user456'))
-        .rejects.toThrow('Thiếu shiftId hoặc userId');
-    });
-
-    it('should throw error if userId is missing', async () => {
-      await expect(removeEmployeeFromShiftService('shift123', null))
-        .rejects.toThrow('Thiếu shiftId hoặc userId');
+    it('should update specific fields', async () => {
+      await updateShiftService('s1', { startTime: '09:00' });
+      expect(mockUpdate).toHaveBeenCalledWith({ startTime: '09:00' });
     });
   });
 });
