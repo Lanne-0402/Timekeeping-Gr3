@@ -17,7 +17,9 @@ import settingsRoutes from "./routes/settings.routes.js";
 
 const app = express();
 
-
+// 2. Thêm dòng này NGAY SAU khi khởi tạo app
+// Dòng này cho phép mọi trang web (gồm GitHub Pages của bạn) được phép gọi vào server
+app.use(cors({ origin: '*' }));
 
 app.use(express.json());
 // CORS FIX for Vite + all HTTP methods
@@ -57,3 +59,4 @@ app.use("*", (req, res) => {
 });
 
 export default app;
+
