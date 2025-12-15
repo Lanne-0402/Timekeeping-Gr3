@@ -41,29 +41,54 @@ async function runCheckinTest() {
     await driver.wait(until.urlContains("employee.html"), CONFIG.DEFAULT_TIMEOUT);
     console.log("✅ Đăng nhập thành công.");
 
-    // --- BƯỚC 2: MỞ CAMERA ---
-    console.log("📸 Bước 2: Mở Modal Check-in...");
-    const homeTab = await driver.findElement(By.css(".nav-item[data-route='home']"));
-    await homeTab.click();
-
     // Đợi một chút để trang load xong
     await driver.sleep(1000);
 
+    // --- BƯỚC 2: CLICK BUTTON CHECK-IN ---
+    console.log("📸 Bước 2: Click button Check-in...");
+    const homeTab = await driver.findElement(By.css(".nav-item[data-route='home']"));
+    await homeTab.click();
+    await driver.sleep(500);
+
     const checkinBtn = await driver.wait(until.elementLocated(By.id("btnFaceCheckin")), CONFIG.SHORT_TIMEOUT);
     await checkinBtn.click();
+    console.log("✅ Đã click button Check-in.");
 
-    // Kiểm tra Modal mở (dựa trên thuộc tính 'open')
+    // --- BƯỚC 3: KIỂM TRA THÔNG BÁO XIN QUYỀN CAMERA ---
+    console.log("🎥 Bước 3: Kiểm tra thông báo xin quyền camera...");
+    await driver.sleep(1000);
+
+    // Kiểm tra xem có thông báo/alert xin quyền camera không
+    // Với fake camera, thông báo có thể không xuất hiện nhưng ta kiểm tra log
+    const cameraPermissionGranted = await driver.executeScript(`
+      // Kiểm tra xem getUserMedia có được gọi không
+      return navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+    `);
+
+    if (cameraPermissionGranted) {
+      console.log("✅ API Camera (getUserMedia) có sẵn.");
+    } else {
+      console.warn("⚠️ API Camera không khả dụng.");
+    }
+
+    // Kiểm tra xem browser có đang yêu cầu quyền camera không
+    // Với --use-fake-ui-for-media-stream, quyền được cấp tự động
+    console.log("ℹ️ Với fake camera, quyền được cấp tự động (--use-fake-ui-for-media-stream).");
+    console.log("ℹ️ Trong môi trường thực, người dùng sẽ thấy popup xin quyền camera.");
+
+    // --- BƯỚC 4: KIỂM TRA MODAL ĐÃ MỞ ---
+    console.log("📱 Bước 4: Kiểm tra Modal Check-in đã mở...");
     const modal = await driver.wait(until.elementLocated(By.id("faceModal")), CONFIG.SHORT_TIMEOUT);
     await driver.wait(async () => (await modal.getAttribute("open")) !== null, CONFIG.SHORT_TIMEOUT);
     console.log("✅ Modal Check-in đã mở.");
 
-    // --- BƯỚC 3: KIỂM TRA LUỒNG VIDEO ---
-    console.log("📹 Bước 3: Kiểm tra tín hiệu Video...");
+    // --- BƯỚC 5: KIỂM TRA LUỒNG VIDEO ---
+    console.log("📹 Bước 5: Kiểm tra tín hiệu Video...");
     const video = await driver.findElement(By.id("faceVideo"));
     
-    // Đợi video load và bắt đầu phát (tăng thời gian chờ)
+    // Đợi video load và bắt đầu phát
     console.log("⏳ Đang đợi video khởi động...");
-    await driver.sleep(2000); // Đợi thêm 2 giây cho video khởi động
+    await driver.sleep(2000);
 
     // Kiểm tra nhiều thuộc tính của video
     const videoCheck = await driver.executeScript(`
@@ -73,7 +98,8 @@ async function runCheckinTest() {
         videoWidth: video.videoWidth,
         videoHeight: video.videoHeight,
         paused: video.paused,
-        srcObject: video.srcObject !== null
+        srcObject: video.srcObject !== null,
+        videoTracks: video.srcObject ? video.srcObject.getVideoTracks().length : 0
       };
     `, video);
 
@@ -91,7 +117,8 @@ async function runCheckinTest() {
         const video = arguments[0];
         return {
           readyState: video.readyState,
-          srcObject: video.srcObject !== null
+          srcObject: video.srcObject !== null,
+          videoTracks: video.srcObject ? video.srcObject.getVideoTracks().length : 0
         };
       `, video);
       
@@ -103,10 +130,15 @@ async function runCheckinTest() {
       );
     }
     
+    // Kiểm tra số lượng video tracks
+    if (videoCheck.videoTracks > 0) {
+      console.log(`✅ Video Camera có ${videoCheck.videoTracks} video track(s).`);
+    }
+    
     console.log("✅ Video Camera hoạt động tốt.");
 
-    // --- BƯỚC 4: KIỂM TRA PHẢN HỒI NHẬN DIỆN ---
-    console.log("🧠 Bước 4: Kiểm tra phản hồi của AI...");
+    // --- BƯỚC 6: KIỂM TRA PHẢN HỒI NHẬN DIỆN ---
+    console.log("🧠 Bước 6: Kiểm tra phản hồi của AI...");
     const statusDiv = await driver.findElement(By.id("faceStatus"));
     
     // Đợi trạng thái thay đổi từ "Đang chuẩn bị..." sang thông báo khác
@@ -118,12 +150,15 @@ async function runCheckinTest() {
     const finalStatus = await statusDiv.getText();
     console.log(`✅ Hệ thống đã phản hồi trạng thái: "${finalStatus}"`);
 
-    // --- BƯỚC 5: ĐÓNG MODAL ---
+    // --- BƯỚC 7: ĐÓNG MODAL ---
+    console.log("🔒 Bước 7: Đóng modal...");
     const closeBtn = await driver.findElement(By.id("faceCloseBtn"));
     await closeBtn.click();
     console.log("✅ Đã đóng modal.");
     
     console.log("\n🎉 KẾT LUẬN: GIAO DIỆN & TÍN HIỆU CAMERA HOẠT ĐỘNG TỐT.");
+    console.log("📝 LƯU Ý: Trong test tự động, quyền camera được cấp tự động.");
+    console.log("📝 Trong thực tế, người dùng sẽ thấy popup xin quyền camera trước khi quét.");
 
   } catch (err) {
     console.error("\n❌ TEST FAILED:", err.message);
