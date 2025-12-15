@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://timekeeping-gr3.onrender.com//api";
 
 // DOM
 const loginForm = document.getElementById("loginForm");
