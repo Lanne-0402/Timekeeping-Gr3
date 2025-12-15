@@ -76,4 +76,4 @@ g@example.com → 12345678
 (theo bảng chữ cái từ a -> g)
 
 ## 9. Link Website Timekeeping 
-[https://lanne-0402.github.io/Timekeeping-Gr3/]
+[Timekeeping Project – Mini App Quản Lý Chấm Công Nhân Viên](https://lanne-0402.github.io/Timekeeping-Gr3/)
