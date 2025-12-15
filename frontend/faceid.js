@@ -1,5 +1,5 @@
 (function (global) {
-  const API_BASE = global.API_BASE || "https://timekeeping-gr3.onrender.com//api";
+  const API_BASE = global.API_BASE || "https://timekeeping-gr3.onrender.com/api";
 
   let token = null;
   let uid = null;

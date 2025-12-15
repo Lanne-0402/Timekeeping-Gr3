@@ -1,5 +1,5 @@
 // ===================== CONFIG =====================
-const API_BASE = "https://timekeeping-gr3.onrender.com//api";
+const API_BASE = "https://timekeeping-gr3.onrender.com/api";
 
 // ===================== GLOBAL STATE =====================
 let historyData = [];
