@@ -207,9 +207,9 @@ otpForm.addEventListener("submit", async (e) => {
   if (!otp) return toast("Vui lòng nhập OTP");
 
   const payload = {
-    email: pendingRegister.email,
-    name: pendingRegister.name,
-    password: pendingRegister.password,
+    email: pendingRegisterData.email,
+    name: pendingRegisterData.name,
+    password: pendingRegisterData.password,
     otp
   };
 
