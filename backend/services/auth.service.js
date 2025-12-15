@@ -10,11 +10,11 @@ import { generateEmployeeCode } from "../utils/idGenerator.js";
 // GMAIL SMTP
 // =====================
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  service: 'gmail',
   auth: {
-    user: "timekeepinggr3@gmail.com",      // Gmail bạn
-    pass: "wdskjqalhdlhogfs",              // App password 16 kí tự
-  },
+    user: process.env.SENDER_EMAIL,
+    pass: process.env.EMAIL_PASSWORD
+ }
 });
 
 // =====================
