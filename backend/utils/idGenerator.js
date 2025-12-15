@@ -1,24 +1,37 @@
 import db from "../config/firebase.js";
 
-async function nextCounter(name) {
-  const ref = db.collection("counters").doc(name);
+export const generateEmployeeCode = async () => {
+  const ref = db.collection("counters").doc("employees");
 
-  await db.runTransaction(async (t) => {
-    const doc = await t.get(ref);
-    const last = doc.exists ? doc.data().last : 0;
-    t.set(ref, { last: last + 1 });
+  const result = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+
+    let current = 0;
+    if (snap.exists) {
+      current = snap.data().value || 0;
+    }
+
+    const next = current + 1;
+    tx.set(ref, { value: next }, { merge: true });
+
+    return next;
   });
 
-  const snap = await ref.get();
-  return snap.data().last;
-}
+  return `NV${String(result).padStart(3, "0")}`;
+};
 
-export async function generateEmployeeCode() {
-  const num = await nextCounter("employees");
-  return "NV" + String(num).padStart(3, "0");
-}
+export const generateShiftCode = async () => {
+  const ref = db.collection("counters").doc("shifts");
 
-export async function generateShiftCode() {
-  const num = await nextCounter("shifts");
-  return "CA" + String(num).padStart(3, "0");
-}
+  const next = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? snap.data().value || 0 : 0;
+    const value = current + 1;
+
+    tx.set(ref, { value }, { merge: true });
+    return value;
+  });
+
+  return `CA${String(next).padStart(3, "0")}`;
+};
+
