@@ -11,7 +11,7 @@ import { generateEmployeeCode } from "../utils/idGenerator.js";
 // =====================
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,                 // Đổi sang cổng 587
+  port: 2525,                 // Đổi sang cổng 587
   secure: false,             // Bắt buộc để false khi dùng cổng 587
   auth: {
     user: process.env.SENDER_EMAIL,
