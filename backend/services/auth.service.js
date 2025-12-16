@@ -10,11 +10,16 @@ import { generateEmployeeCode } from "../utils/idGenerator.js";
 // GMAIL SMTP
 // =====================
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: "smtp.gmail.com",
+  port: 587,                 // Đổi sang cổng 587
+  secure: false,             // Bắt buộc để false khi dùng cổng 587
   auth: {
     user: process.env.SENDER_EMAIL,
-    pass: process.env.EMAIL_PASSWORD
- }
+    pass: process.env.EMAIL_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false // Thêm dòng này để tránh lỗi chứng chỉ SSL trên Render
+  }
 });
 
 // =====================
