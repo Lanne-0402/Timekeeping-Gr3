@@ -181,7 +181,7 @@ registerBtn.onclick = async () => {
     if (!data.success) return toast(data.message);
 
     // Lưu lại thông tin để verify
-    pendingRegister = { name, email, password: pass };
+    pendingRegisterData = { name, email, password: pass };
 
     // Hiện OTP UI
     showView("otp");
@@ -201,7 +201,7 @@ registerBtn.onclick = async () => {
 otpForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  if (!pendingRegister) return toast("Thiếu dữ liệu đăng ký");
+  if (!pendingRegisterData) return toast("Thiếu dữ liệu đăng ký");
 
   const otp = document.getElementById("otpInput").value.trim();
   if (!otp) return toast("Vui lòng nhập OTP");
