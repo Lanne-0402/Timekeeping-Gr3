@@ -1,4 +1,3 @@
-// checkin.test.js
 const { Builder, By, until } = require("selenium-webdriver");
 const edge = require("selenium-webdriver/edge");
 const assert = require("assert");
@@ -41,7 +40,6 @@ async function runCheckinTest() {
     await driver.wait(until.urlContains("employee.html"), CONFIG.DEFAULT_TIMEOUT);
     console.log("✅ Đăng nhập thành công.");
 
-    // Đợi một chút để trang load xong
     await driver.sleep(1000);
 
     // --- BƯỚC 2: CLICK BUTTON CHECK-IN ---
@@ -58,8 +56,6 @@ async function runCheckinTest() {
     console.log("🎥 Bước 3: Kiểm tra thông báo xin quyền camera...");
     await driver.sleep(1000);
 
-    // Kiểm tra xem có thông báo/alert xin quyền camera không
-    // Với fake camera, thông báo có thể không xuất hiện nhưng ta kiểm tra log
     const cameraPermissionGranted = await driver.executeScript(`
       // Kiểm tra xem getUserMedia có được gọi không
       return navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
@@ -71,8 +67,6 @@ async function runCheckinTest() {
       console.warn("⚠️ API Camera không khả dụng.");
     }
 
-    // Kiểm tra xem browser có đang yêu cầu quyền camera không
-    // Với --use-fake-ui-for-media-stream, quyền được cấp tự động
     console.log("ℹ️ Với fake camera, quyền được cấp tự động (--use-fake-ui-for-media-stream).");
     console.log("ℹ️ Trong môi trường thực, người dùng sẽ thấy popup xin quyền camera.");
 
@@ -85,12 +79,10 @@ async function runCheckinTest() {
     // --- BƯỚC 5: KIỂM TRA LUỒNG VIDEO ---
     console.log("📹 Bước 5: Kiểm tra tín hiệu Video...");
     const video = await driver.findElement(By.id("faceVideo"));
-    
-    // Đợi video load và bắt đầu phát
+
     console.log("⏳ Đang đợi video khởi động...");
     await driver.sleep(2000);
 
-    // Kiểm tra nhiều thuộc tính của video
     const videoCheck = await driver.executeScript(`
       const video = arguments[0];
       return {
@@ -105,14 +97,12 @@ async function runCheckinTest() {
 
     console.log("📊 Trạng thái Video:", videoCheck);
 
-    // readyState >= 2 (HAVE_CURRENT_DATA) hoặc có srcObject
     const isVideoReady = videoCheck.readyState >= 2 || videoCheck.srcObject;
     
     if (!isVideoReady) {
       console.log("⚠️ Video chưa sẵn sàng, đợi thêm...");
       await driver.sleep(3000);
       
-      // Kiểm tra lại
       const videoCheck2 = await driver.executeScript(`
         const video = arguments[0];
         return {
@@ -130,7 +120,6 @@ async function runCheckinTest() {
       );
     }
     
-    // Kiểm tra số lượng video tracks
     if (videoCheck.videoTracks > 0) {
       console.log(`✅ Video Camera có ${videoCheck.videoTracks} video track(s).`);
     }
@@ -141,7 +130,6 @@ async function runCheckinTest() {
     console.log("🧠 Bước 6: Kiểm tra phản hồi của AI...");
     const statusDiv = await driver.findElement(By.id("faceStatus"));
     
-    // Đợi trạng thái thay đổi từ "Đang chuẩn bị..." sang thông báo khác
     await driver.wait(async () => {
         const text = await statusDiv.getText();
         return text.length > 0 && !text.includes("Đang chuẩn bị");

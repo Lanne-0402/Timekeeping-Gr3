@@ -1,4 +1,3 @@
-// report.test.js
 const { Builder, By, until } = require("selenium-webdriver");
 const edge = require("selenium-webdriver/edge");
 const assert = require("assert");
@@ -36,7 +35,6 @@ async function runReportTest() {
     );
     await reportTab.click();
     
-    // Đợi section hiện ra
     const reportSection = await driver.findElement(By.id("reports"));
     await driver.wait(
       async () => !(await reportSection.getAttribute("class")).includes("hidden"), 
@@ -50,7 +48,6 @@ async function runReportTest() {
     const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
     const monthInput = await driver.findElement(By.id("repMonth"));
     
-    // Dùng JS để set value cho input date (ổn định hơn sendKeys)
     await driver.executeScript("arguments[0].value = arguments[1]", monthInput, currentMonth);
     console.log(`✅ Đã chọn tháng báo cáo: ${currentMonth}`);
 
@@ -91,27 +88,23 @@ async function runReportTest() {
       
       // 7. Click vào button "Xem chi tiết" của nhân viên đầu tiên
       console.log("\n👁️ Bước 7: Mở chi tiết nhân viên...");
-      // Tìm button với class "emp-detail-btn"
+
       const detailButtons = await driver.findElements(By.css(".emp-detail-btn"));
       
       if (detailButtons.length > 0) {
-        // Click button đầu tiên
+
         await detailButtons[0].click();
         console.log("✅ Đã click vào nút 'Xem chi tiết'.");
         
-        // Đợi modal xuất hiện
         await driver.sleep(1000);
         
-        // Tìm modal chi tiết (có thể là dialog hoặc div với class modal)
         let modalFound = false;
         let modalElement = null;
         
-        // Modal ID là "empDetailModal" theo manager.js
         try {
           modalElement = await driver.findElement(By.id("empDetailModal"));
           const modalClass = await modalElement.getAttribute("class");
           
-          // Kiểm tra modal đã mở (không có class "hidden")
           if (!modalClass.includes("hidden")) {
             modalFound = true;
           }
@@ -122,12 +115,10 @@ async function runReportTest() {
         if (modalFound) {
           console.log("✅ Modal chi tiết đã mở.");
           
-          // Đọc thông tin trong modal
           try {
             const modalText = await modalElement.getText();
             console.log(`\n📝 Nội dung modal:\n${modalText.substring(0, 200)}...`);
             
-            // Kiểm tra xem có hiển thị "Không có dữ liệu ca làm" không
             if (modalText.includes("Không có dữ liệu ca làm")) {
               console.log("ℹ️ Nhân viên này không có dữ liệu ca làm trong tháng.");
             } else {
@@ -149,20 +140,16 @@ async function runReportTest() {
             attempts++;
             console.log(`🔄 Thử đóng modal lần ${attempts}...`);
             
-            // Thử cách 1: Click nút Đóng với ID đúng "btnCloseEmpDetail"
             try {
               const closeButton = await driver.findElement(By.id("btnCloseEmpDetail"));
               
-              // Scroll đến button và đợi
               await driver.executeScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", closeButton);
               await driver.sleep(300);
               
-              // Click bằng JavaScript
               await driver.executeScript("arguments[0].click();", closeButton);
               console.log("✅ Đã click nút Đóng.");
               await driver.sleep(1000);
               
-              // Kiểm tra modal đã đóng chưa (có class "hidden")
               const modal = await driver.findElement(By.id("empDetailModal"));
               const modalClass = await modal.getAttribute("class");
               if (modalClass && modalClass.includes("hidden")) {
@@ -173,7 +160,6 @@ async function runReportTest() {
               console.warn(`⚠️ Lần ${attempts}: Không click được nút Đóng.`);
             }
             
-            // Nếu chưa đóng, thử click overlay
             if (!modalClosed) {
               try {
                 const modal = await driver.findElement(By.id("empDetailModal"));
@@ -186,7 +172,6 @@ async function runReportTest() {
               }
             }
             
-            // Nếu vẫn chưa đóng, thử ESC
             if (!modalClosed) {
               try {
                 await driver.actions().sendKeys("\uE00C").perform(); // ESC
@@ -207,7 +192,7 @@ async function runReportTest() {
           
           if (!modalClosed) {
             console.error("❌ KHÔNG THỂ đóng modal sau 3 lần thử!");
-            // Thử force close bằng JavaScript
+
             try {
               await driver.executeScript(`
                 const modal = document.getElementById('empDetailModal');
@@ -230,25 +215,22 @@ async function runReportTest() {
     // 9. Click nút "Xuất báo cáo" và Xử lý Download
     console.log("\n📥 Bước 9: Xuất báo cáo...");
     
-    // Đảm bảo không còn modal nào che khuất
     await driver.sleep(1000); 
 
     try {
       // Tìm nút export (Ưu tiên tìm theo ID đúng trong manager.js)
       let exportButton = await driver.wait(
         until.elementLocated(By.id("btnLoadSummary")), 
-        5000 // Chờ tối đa 5s để nút xuất hiện
+        5000 
       );
 
-      // Scroll tới nút để đảm bảo nó hiển thị
       await driver.executeScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", exportButton);
       await driver.sleep(500);
 
-      // Click nút (Dùng JS click để tránh bị chặn bởi overlay nếu có)
       await driver.executeScript("arguments[0].click();", exportButton);
       console.log("✅ Đã click nút 'Xuất báo cáo', đang chờ server xử lý...");
 
-      // --- QUAN TRỌNG: Xử lý logic Fetch & Download ---
+      // --- Xử lý logic Fetch & Download ---
       
       // 1. Chờ xem có Alert lỗi không (Ví dụ: 401 Unauthorized hoặc 500 Error)
       try {
@@ -256,9 +238,8 @@ async function runReportTest() {
         let alert = await driver.switchTo().alert();
         let alertText = await alert.getText();
         console.error(`❌ LỖI: Server trả về Alert: "${alertText}"`);
-        await alert.accept(); // Đóng alert
+        await alert.accept(); 
       } catch (e) {
-        // Nếu timeout (không có alert) nghĩa là API chạy OK hoặc đang chạy
         console.log("ℹ️ Không có thông báo lỗi từ hệ thống (Tốt).");
       }
 

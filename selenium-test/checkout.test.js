@@ -1,4 +1,3 @@
-// checkout.test.js
 const { Builder, By, until } = require("selenium-webdriver");
 const edge = require("selenium-webdriver/edge");
 const assert = require("assert");
@@ -18,7 +17,6 @@ const CREDENTIALS = {
 async function runCheckoutTest() {
   console.log("\n🚀 [CHECK-OUT TEST] KHỞI ĐỘNG...");
 
-  // Cấu hình Camera Permission
   let options = new edge.Options();
   options.addArguments("--use-fake-ui-for-media-stream");
   options.addArguments("--use-fake-device-for-media-stream");
@@ -39,7 +37,6 @@ async function runCheckoutTest() {
     await driver.wait(until.urlContains("employee.html"), CONFIG.DEFAULT_TIMEOUT);
     console.log("✅ Đăng nhập thành công.");
 
-    // Đợi trang load xong
     await driver.sleep(1000);
 
     // 2. Click Check-out
@@ -56,11 +53,9 @@ async function runCheckoutTest() {
     console.log("📹 Bước 3: Kiểm tra tín hiệu Video...");
     const video = await driver.findElement(By.id("faceVideo"));
     
-    // Đợi video load và bắt đầu phát
     console.log("⏳ Đang đợi video khởi động...");
     await driver.sleep(2000);
 
-    // Kiểm tra nhiều thuộc tính của video
     const videoCheck = await driver.executeScript(`
       const video = arguments[0];
       return {
@@ -74,14 +69,12 @@ async function runCheckoutTest() {
 
     console.log("📊 Trạng thái Video:", videoCheck);
 
-    // readyState >= 2 hoặc có srcObject
     const isVideoReady = videoCheck.readyState >= 2 || videoCheck.srcObject;
     
     if (!isVideoReady) {
       console.log("⚠️ Video chưa sẵn sàng, đợi thêm...");
       await driver.sleep(3000);
       
-      // Kiểm tra lại
       const videoCheck2 = await driver.executeScript(`
         const video = arguments[0];
         return {
@@ -104,7 +97,6 @@ async function runCheckoutTest() {
     console.log("🧠 Bước 4: Kiểm tra phản hồi của AI...");
     const statusDiv = await driver.findElement(By.id("faceStatus"));
     
-    // Đợi trạng thái thay đổi
     await driver.wait(async () => {
       const text = await statusDiv.getText();
       return text.length > 0 && !text.includes("Đang chuẩn bị");
@@ -137,7 +129,6 @@ async function runCheckoutTest() {
     await historyTab.click();
     console.log("✅ Đã chuyển sang tab Lịch sử.");
 
-    // Đợi table load
     await driver.sleep(1500);
 
     // 8. Kiểm tra bảng lịch sử có dữ liệu
@@ -152,7 +143,6 @@ async function runCheckoutTest() {
     } else {
       console.log("✅ Bảng lịch sử có dữ liệu.");
 
-      // Lấy dòng đầu tiên (mới nhất)
       const firstRow = rows[0];
       const cells = await firstRow.findElements(By.css("td"));
 
@@ -166,7 +156,6 @@ async function runCheckoutTest() {
         console.log(`   Check-in: ${checkinTime}`);
         console.log(`   Check-out: ${checkoutTime}`);
 
-        // Kiểm tra xem có check-out time không
         if (checkoutTime && checkoutTime.trim() !== "" && checkoutTime !== "-") {
           console.log("✅ Check-out đã được ghi nhận trong lịch sử!");
         } else {
