@@ -1,69 +1,219 @@
-// backend/scripts/backfillCodes.js
+/**
+ * BACKFILL FULL V3
+ * - Bổ sung employeeCode cho users
+ * - Bổ sung shiftCode cho shifts
+ * - Bổ sung employeeCode + shiftName/start/end cho user_shifts
+ * - Bổ sung employeeCode + shiftName/start/end cho attendance
+ * 
+ * SAFE – không overwrite dữ liệu đã tồn tại
+ */
+
 import db from "../config/firebase.js";
-import { generateEmployeeCode, generateShiftCode } from "../utils/idGenerator.js";
 
-// Role KHÔNG đổi ID
-const ADMIN_ROLES = ["admin", "System Admin", "manager"];
+function pad(num) {
+  return String(num).padStart(3, "0");
+}
 
-async function backfillEmployees() {
+// -------------------------------------------------------------
+// 1. USERS – Bổ sung employeeCode
+// -------------------------------------------------------------
+async function backfillUsers() {
+  console.log("\n=== Backfilling employeeCode for users ===");
+
   const snap = await db.collection("users").get();
 
+  let index = 1;
+  let updates = [];
+
   for (const doc of snap.docs) {
-    const data = doc.data();
+    const u = doc.data();
 
-    // Bỏ admin / manager
-    if (ADMIN_ROLES.includes(data.role)) {
-      console.log(`Skip admin/manager: ${data.email}`);
-      continue;
-    }
+    if (u.role === "admin" || u.role === "System Admin") continue;
+    if (u.employeeCode) continue;
 
-    // Nếu đã có employeeCode → bỏ qua
-    if (data.employeeCode) {
-      console.log(`Skip existing code: ${data.email} (${data.employeeCode})`);
-      continue;
-    }
-
-    // Tạo mã NVxxx
-    const code = await generateEmployeeCode();
-    await doc.ref.update({ employeeCode: code });
-
-    console.log(`User ${data.email} → ${code}`);
+    const code = `NV${pad(index++)}`;
+    updates.push({ id: doc.id, employeeCode: code });
   }
+
+  for (const u of updates) {
+    await db.collection("users").doc(u.id).update({
+      employeeCode: u.employeeCode,
+    });
+  }
+
+  console.table(updates);
+  console.log(`→ Done. ${updates.length} users updated.`);
 }
 
+// -------------------------------------------------------------
+// 2. SHIFTS – Bổ sung shiftCode
+// -------------------------------------------------------------
 async function backfillShifts() {
+  console.log("\n=== Backfilling shiftCode for shifts ===");
+
   const snap = await db.collection("shifts").get();
 
-  for (const doc of snap.docs) {
-    const data = doc.data();
+  let index = 1;
+  let updates = [];
 
-    // Nếu đã có mã → bỏ qua
-    if (data.shiftCode) {
-      console.log(`Skip existing shift: ${data.name}`);
-      continue;
+  for (const doc of snap.docs) {
+    const s = doc.data();
+    if (s.shiftCode) continue;
+
+    const code = `CA${pad(index++)}`;
+    updates.push({ id: doc.id, shiftCode: code });
+  }
+
+  for (const s of updates) {
+    await db.collection("shifts").doc(s.id).update({
+      shiftCode: s.shiftCode
+    });
+  }
+
+  console.table(updates);
+  console.log(`→ Done. ${updates.length} shifts updated.`);
+}
+
+// -------------------------------------------------------------
+// Helper: Tạo map userId → employeeCode
+// -------------------------------------------------------------
+async function loadUserMap() {
+  const snap = await db.collection("users").get();
+  const map = {};
+
+  snap.forEach(doc => {
+    const u = doc.data();
+    map[doc.id] = {
+      employeeCode: u.employeeCode || null,
+      name: u.name || ""
+    };
+  });
+
+  return map;
+}
+
+// -------------------------------------------------------------
+// Helper: Tạo map shiftId → shift info
+// -------------------------------------------------------------
+async function loadShiftMap() {
+  const snap = await db.collection("shifts").get();
+  const map = {};
+
+  snap.forEach(doc => {
+    const s = doc.data();
+    map[doc.id] = {
+      shiftCode: s.shiftCode || null,
+      shiftName: s.name || null,
+      shiftStart: s.startTime || null,
+      shiftEnd: s.endTime || null,
+      date: s.date || null,
+    };
+  });
+
+  return map;
+}
+
+// -------------------------------------------------------------
+// 3. USER_SHIFTS – Bổ sung employeeCode + shiftName/start/end
+// -------------------------------------------------------------
+async function backfillUserShifts(userMap, shiftMap) {
+  console.log("\n=== Backfilling user_shifts ===");
+
+  const snap = await db.collection("user_shifts").get();
+
+  let updates = [];
+
+  for (const doc of snap.docs) {
+    const r = doc.data();
+    let updated = {};
+
+    // add employeeCode
+    if (!r.employeeCode && userMap[r.userId]?.employeeCode) {
+      updated.employeeCode = userMap[r.userId].employeeCode;
     }
 
-    const code = await generateShiftCode();
-    await doc.ref.update({ shiftCode: code });
+    // add shift info
+    const s = shiftMap[r.shiftId];
+    if (s) {
+      if (!r.shiftName && s.shiftName) updated.shiftName = s.shiftName;
+      if (!r.shiftStart && s.shiftStart) updated.shiftStart = s.shiftStart;
+      if (!r.shiftEnd && s.shiftEnd) updated.shiftEnd = s.shiftEnd;
+      // ensure date sync (optional)
+      if (!r.date && s.date) updated.date = s.date;
+    }
 
-    console.log(`Shift ${data.name} → ${code}`);
+    if (Object.keys(updated).length > 0) {
+      updates.push({ id: doc.id, ...updated });
+      await db.collection("user_shifts").doc(doc.id).update(updated);
+    }
   }
+
+  console.table(updates);
+  console.log(`→ Done. ${updates.length} user_shifts updated.`);
 }
 
-async function run() {
-  try {
-    console.log("== Backfilling employees ==");
-    await backfillEmployees();
+// -------------------------------------------------------------
+// 4. ATTENDANCE – Bổ sung employeeCode + shiftName/start/end
+// -------------------------------------------------------------
+async function backfillAttendance(userMap, shiftMap) {
+  console.log("\n=== Backfilling attendance ===");
 
-    console.log("== Backfilling shifts ==");
-    await backfillShifts();
+  const snap = await db.collection("attendance").get();
 
-    console.log("DONE ✔✔✔");
-    process.exit(0);
-  } catch (err) {
-    console.error("Backfill ERROR:", err);
-    process.exit(1);
+  let updates = [];
+
+  for (const doc of snap.docs) {
+    const r = doc.data();
+    let updated = {};
+
+    // add employeeCode
+    if (!r.employeeCode && userMap[r.userId]?.employeeCode) {
+      updated.employeeCode = userMap[r.userId].employeeCode;
+    }
+
+    // add shift info
+    const s = shiftMap[r.shiftId];
+    if (s) {
+      if (!r.shiftName && s.shiftName) updated.shiftName = s.shiftName;
+      if (!r.shiftStart && s.shiftStart) updated.shiftStart = s.shiftStart;
+      if (!r.shiftEnd && s.shiftEnd) updated.shiftEnd = s.shiftEnd;
+    }
+
+    if (Object.keys(updated).length > 0) {
+      updates.push({ id: doc.id, ...updated });
+      await db.collection("attendance").doc(doc.id).update(updated);
+    }
   }
+
+  console.table(updates);
+  console.log(`→ Done. ${updates.length} attendance rows updated.`);
 }
 
-run();
+// -------------------------------------------------------------
+// MAIN
+// -------------------------------------------------------------
+async function main() {
+  console.log("\n==========================================");
+  console.log("         RUNNING FULL BACKFILL V3");
+  console.log("==========================================\n");
+
+  // Step 1: base codes
+  await backfillUsers();
+  await backfillShifts();
+
+  // Load updated reference maps
+  const userMap = await loadUserMap();
+  const shiftMap = await loadShiftMap();
+
+  // Step 2: backfill relational tables
+  await backfillUserShifts(userMap, shiftMap);
+  await backfillAttendance(userMap, shiftMap);
+
+  console.log("\n🎉 FULL BACKFILL HOÀN TẤT!");
+  process.exit(0);
+}
+
+main().catch(err => {
+  console.error("❌ ERROR:", err);
+  process.exit(1);
+});
