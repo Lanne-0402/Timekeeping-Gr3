@@ -146,12 +146,15 @@ export const sendOtpService = async (email) => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    await transporter.sendMail({
+    /* await transporter.sendMail({
       from: "timekeepinggr3@gmail.com",
       to: email,
       subject: "Mã OTP đăng ký tài khoản",
       html: `<p>Mã OTP của bạn:</p><h2>${otp}</h2><p>Hiệu lực 5 phút.</p>`,
-    });
+    });*/
+
+    // ✅ CODE MỚI (Sửa thành cái này)
+  await sendEmail(email, "Mã xác thực OTP", `Mã OTP của bạn là: ${otp}`);
 
     return { success: true, message: "Đã gửi OTP qua email!" };
 
