@@ -11,7 +11,6 @@ describe('Auth Middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Set up environment
     process.env.JWT_SECRET = JWT_SECRET;
 
     req = {
@@ -286,13 +285,11 @@ describe('Auth Middleware', () => {
       const token = 'valid-token';
       const decoded = { userId: 'user123' };
 
-      req.headers.authorization = `Bearer  ${token}`; // Extra space
+      req.headers.authorization = `Bearer  ${token}`; 
       jwt.verify.mockReturnValue(decoded);
 
       authMiddleware(req, res, next);
 
-      // The middleware splits by space and takes [1], so with extra space it gets empty string
-      // This should fail since token extraction won't work correctly
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
@@ -302,7 +299,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should handle case-sensitive Bearer keyword', () => {
-      req.headers.authorization = 'bearer valid-token'; // lowercase
+      req.headers.authorization = 'bearer valid-token'; 
 
       authMiddleware(req, res, next);
 

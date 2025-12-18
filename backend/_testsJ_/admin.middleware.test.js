@@ -137,7 +137,7 @@ describe('Admin Middleware', () => {
     });
 
     it('should be case-sensitive for role names', () => {
-      req.user = { userId: 'user9', role: 'Admin' }; // Capital A
+      req.user = { userId: 'user9', role: 'Admin' }; 
 
       adminOnly(req, res, next);
 
@@ -161,7 +161,7 @@ describe('Admin Middleware', () => {
     });
 
     it('should handle user object without role property', () => {
-      req.user = { userId: 'user11' }; // No role property
+      req.user = { userId: 'user11' }; 
 
       adminOnly(req, res, next);
 
@@ -175,7 +175,6 @@ describe('Admin Middleware', () => {
 
   describe('Integration Scenarios', () => {
     it('should work in a middleware chain after auth middleware', () => {
-      // Simulate auth middleware setting req.user
       req.user = {
         userId: 'admin123',
         role: 'admin',
@@ -188,7 +187,6 @@ describe('Admin Middleware', () => {
     });
 
     it('should prevent access when auth middleware did not set req.user', () => {
-      // Simulate scenario where auth middleware failed to set req.user
       req.user = null;
 
       adminOnly(req, res, next);

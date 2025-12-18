@@ -69,13 +69,13 @@ describe('Attendance Service Logic', () => {
   });
 
   afterEach(() => {
-    // Quan trọng: Trả lại đồng hồ thật sau mỗi bài test
+    // Trả lại đồng hồ thật sau mỗi bài test
     jest.useRealTimers();
   });
 
   describe('1. Logic Check-In', () => {
     const userId = 'user123';
-    // Lưu ý: Code service dùng today() -> new Date(), nên nó sẽ lấy theo giờ Mock ở trên (20/03/2024)
+    // Code service dùng today() -> new Date(), nên nó sẽ lấy theo giờ Mock ở trên (20/03/2024)
 
     it('Should create attendance record correctly when user has a shift', async () => {
       const todayStr = '2024-03-20';
@@ -157,8 +157,7 @@ describe('Attendance Service Logic', () => {
         }) 
       });
 
-      // --- MẤU CHỐT: Tua đồng hồ đến 17:30 ---
-      // Jest sẽ giả lập thời gian trôi đi
+      // --- Tua đồng hồ đến 17:30 ---
       jest.setSystemTime(new Date('2024-03-20T17:30:00.000Z'));
 
       // Thực thi hàm (bên trong hàm sẽ gọi new Date() -> lấy ra 17:30)
@@ -170,7 +169,7 @@ describe('Attendance Service Logic', () => {
       // Vì dùng fake timers nên kết quả phải chính xác tuyệt đối
       expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
         workSeconds: 34200, 
-        checkOutAt: '2024-03-20T17:30:00.000Z' // Kiểm tra luôn string trả về
+        checkOutAt: '2024-03-20T17:30:00.000Z' 
       }));
     });
 
@@ -196,9 +195,6 @@ describe('Attendance Service Logic', () => {
     const userId = 'user123';
 
     it('fetchSummaryService: Should count daysWorked/daysOff correctly', async () => {
-      // Logic:
-      // daysWorked = Số ngày có trong cả 2 list (Shifts & Attendance)
-      // daysOff = (Tổng số ngày có Shifts) - daysWorked
       
       const mockShifts = [
         { data: () => ({ date: '2024-03-01' }) },
@@ -227,7 +223,7 @@ describe('Attendance Service Logic', () => {
           date: '2024-03-15',
           checkInAt: '...',
           checkOutAt: '...',
-          workSeconds: 32400, // 9 hours
+          workSeconds: 32400,
           note: ''
         })
       }];
@@ -236,7 +232,7 @@ describe('Attendance Service Logic', () => {
 
       const result = await fetchHistoryService(userId);
 
-      expect(result[0].workMinutes).toBe(540); // 32400 / 60
+      expect(result[0].workMinutes).toBe(540);
     });
   });
 });

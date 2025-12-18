@@ -176,7 +176,7 @@ describe('SelfOrAdmin Middleware', () => {
   describe('Edge Cases', () => {
     it('should deny when userId does not match (case-sensitive)', () => {
       req.user = { userId: 'user123', role: 'employee' };
-      req.params.userId = 'User123'; // Different case
+      req.params.userId = 'User123'; 
 
       selfOrAdmin(req, res, next);
 
@@ -213,7 +213,7 @@ describe('SelfOrAdmin Middleware', () => {
     });
 
     it('should be case-sensitive for admin roles', () => {
-      req.user = { userId: 'admin1', role: 'Admin' }; // Capital A
+      req.user = { userId: 'admin1', role: 'Admin' }; 
       req.params.userId = 'user123';
 
       selfOrAdmin(req, res, next);
@@ -274,7 +274,6 @@ describe('SelfOrAdmin Middleware', () => {
 
   describe('Integration Scenarios', () => {
     it('should work in a middleware chain after auth', () => {
-      // Simulate auth middleware setting req.user
       req.user = { userId: 'user123', role: 'employee', email: 'user@example.com' };
       req.params.userId = 'user123';
 
@@ -300,7 +299,6 @@ describe('SelfOrAdmin Middleware', () => {
     });
 
     it('should prioritize self check before admin check', () => {
-      // User accessing own data should work even with invalid role
       req.user = { userId: 'user123', role: 'invalid-role' };
       req.params.userId = 'user123';
 

@@ -1,4 +1,3 @@
-// backend/test/jest/shifts.service.test.js
 import {
   createShiftService,
   getShiftsService,
@@ -66,14 +65,11 @@ describe('Shifts Service Logic', () => {
       commit: jest.fn().mockResolvedValue(undefined)
     };
 
-    // Link mocks vào db
     db.collection = mockCollection;
     db.batch = jest.fn(() => mockBatch);
 
-    // Default return cho id generator
     idGenerator.generateShiftCode.mockResolvedValue('CA001');
 
-    // Default chain behavior: db.collection().doc()
     mockCollection.mockReturnValue({ 
       doc: mockDoc,
       where: mockWhere,
@@ -121,7 +117,7 @@ describe('Shifts Service Logic', () => {
   });
 
   // ==========================================
-  // 2. ASSIGN SHIFT (Logic quan trọng)
+  // 2. ASSIGN SHIFT
   // ==========================================
   describe('assignShiftService', () => {
     beforeEach(() => {
@@ -138,11 +134,9 @@ describe('Shifts Service Logic', () => {
 
       const result = await assignShiftService(payload);
 
-      // Verify logic check trùng đã chạy
       expect(mockCollection).toHaveBeenCalledWith('user_shifts');
       expect(mockWhere).toHaveBeenCalledWith('userId', '==', 'user123');
       
-      // Verify ghi DB
       expect(mockBatch.set).toHaveBeenCalled();
       expect(mockBatch.commit).toHaveBeenCalled();
       expect(result).toHaveLength(1);
@@ -164,14 +158,13 @@ describe('Shifts Service Logic', () => {
       await expect(assignShiftService(payload))
         .rejects.toThrow(/Nhân viên đã có ca trong ngày/);
       
-      // Đảm bảo không ghi đè
       expect(mockBatch.commit).not.toHaveBeenCalled();
     });
 
     it('Should THROW ERROR: If trying to assign multiple shifts per day', async () => {
       const payload = {
         userId: 'user123',
-        shiftIds: ['shift1', 'shift2'], // 2 ca
+        shiftIds: ['shift1', 'shift2'], 
         date: '2024-03-20'
       };
 
@@ -183,12 +176,11 @@ describe('Shifts Service Logic', () => {
       const payload = {
         userId: 'user123',
         shiftId: 'shift001',
-        date: '20/11/2024' // Format VN
+        date: '20/11/2024' 
       };
 
       await assignShiftService(payload);
 
-      // Verify batch set gọi với date đã chuẩn hóa
       const callArgs = mockBatch.set.mock.calls[0][1];
       expect(callArgs.date).toBe('2024-11-20');
     });
@@ -212,17 +204,15 @@ describe('Shifts Service Logic', () => {
         { data: () => ({ shiftId: 's1' }) },
         { data: () => ({ shiftId: 's2' }) }
       ];
-
-      // Mock sequence: Call 1 (get shifts) -> Call 2 (get user_shifts)
       mockGet
-        .mockResolvedValueOnce({ docs: mockShifts })      // shifts
-        .mockResolvedValueOnce({ docs: mockUserShifts }); // user_shifts
+        .mockResolvedValueOnce({ docs: mockShifts })     
+        .mockResolvedValueOnce({ docs: mockUserShifts }); 
 
       const result = await getShiftsService('2024-03');
 
       expect(result).toHaveLength(2);
-      expect(result[0].employeeCount).toBe(2); // s1
-      expect(result[1].employeeCount).toBe(1); // s2
+      expect(result[0].employeeCount).toBe(2); 
+      expect(result[1].employeeCount).toBe(1); 
     });
   });
 
@@ -244,8 +234,8 @@ describe('Shifts Service Logic', () => {
       ];
 
       mockGet
-        .mockResolvedValueOnce({ docs: mockAssignments }) // Query user_shifts
-        .mockResolvedValueOnce({ docs: mockUsers });      // Query users
+        .mockResolvedValueOnce({ docs: mockAssignments }) 
+        .mockResolvedValueOnce({ docs: mockUsers });      
 
       const result = await getEmployeesInShiftService('s1');
 
@@ -295,14 +285,12 @@ describe('Shifts Service Logic', () => {
   describe('getUserShiftsService', () => {
     it('should filter by month correctly', async () => {
       const mockDocs = [
-        { data: () => ({ userId: 'u1', shiftId: 's1', date: '2024-11-20' }) }, // Match
-        { data: () => ({ userId: 'u1', shiftId: 's2', date: '2024-12-01' }) }  // No Match
+        { data: () => ({ userId: 'u1', shiftId: 's1', date: '2024-11-20' }) }, 
+        { data: () => ({ userId: 'u1', shiftId: 's2', date: '2024-12-01' }) } 
       ];
 
-      // Mock user_shifts query
       mockGet.mockResolvedValueOnce({ empty: false, docs: mockDocs });
       
-      // Mock shifts detail query (cho shift s1)
       mockGet.mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Ca Sáng' }) });
 
       const result = await getUserShiftsService('u1', '2024-11');

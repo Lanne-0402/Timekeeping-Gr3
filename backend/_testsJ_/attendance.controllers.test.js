@@ -140,14 +140,12 @@ describe('Attendance Controller', () => {
         { docId: 'user2_2024-03-14', userId: 'user2', date: '2024-03-14' }
       ];
 
-      // --- FIX: Thêm tham số from/to giả lập ---
       req.query = { from: '2024-03-01', to: '2024-03-31' };
 
       attendanceService.adminFetchAllAttendanceService.mockResolvedValue(mockData);
 
       await adminGetAllAttendance(req, res);
 
-      // Kiểm tra service được gọi với đúng tham số
       expect(attendanceService.adminFetchAllAttendanceService).toHaveBeenCalledWith('2024-03-01', '2024-03-31');
       expect(res.json).toHaveBeenCalledWith({
         success: true,
@@ -157,7 +155,6 @@ describe('Attendance Controller', () => {
 
     // Test case 2: Trả về mảng rỗng
     it('should return empty array when no records exist', async () => {
-      // --- FIX: Thêm tham số ---
       req.query = { from: '2024-03-01', to: '2024-03-31' };
 
       attendanceService.adminFetchAllAttendanceService.mockResolvedValue([]);
@@ -172,7 +169,6 @@ describe('Attendance Controller', () => {
 
     // Test case 3: Lỗi server
     it('should handle service errors gracefully', async () => {
-      // --- FIX: Thêm tham số để nó chạy lọt qua được bước validation ---
       req.query = { from: '2024-03-01', to: '2024-03-31' };
 
       attendanceService.adminFetchAllAttendanceService.mockRejectedValue(new Error('Database error'));
@@ -186,7 +182,7 @@ describe('Attendance Controller', () => {
       });
     });
 
-    // BONUS: Test case kiểm tra Validation (Nên thêm cái này)
+    // BONUS: Test case kiểm tra Validation
     it('should return 400 if from or to params are missing', async () => {
       req.query = {}; // Không gửi from/to
 
@@ -197,7 +193,7 @@ describe('Attendance Controller', () => {
         success: false,
         message: 'Thiếu from/to (YYYY-MM-DD)',
       });
-      // Đảm bảo service KHÔNG được gọi
+
       expect(attendanceService.adminFetchAllAttendanceService).not.toHaveBeenCalled();
     });
   });

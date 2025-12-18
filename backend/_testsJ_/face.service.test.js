@@ -1,4 +1,3 @@
-// backend/test/jest/face.service.test.js
 import db from '../config/firebase.js';
 
 // Mock Firebase
@@ -144,7 +143,7 @@ describe('Face Service Logic', () => {
   describe('Helper Functions - Integration', () => {
     
     it('should calculate euclidean distance correctly', async () => {
-      // --- FIX: Import hàm cần test ---
+
       const { faceCheckService } = await loadService();
 
       const userId = 'user123';
@@ -176,7 +175,7 @@ describe('Face Service Logic', () => {
 
       mockCollection.mockReturnValue({ doc: mockDoc });
 
-      // Giờ thì faceCheckService đã được định nghĩa
+      // faceCheckService đã được định nghĩa
       const result = await faceCheckService(userId, embedding2, 13.932548, 109.155862);
 
       expect(result.success).toBe(false);
@@ -184,7 +183,7 @@ describe('Face Service Logic', () => {
     });
 
     it('should calculate GPS distance using Haversine formula', async () => {
-      // --- FIX: Import hàm cần test ---
+
       const { faceCheckService } = await loadService();
 
       const userId = 'user123';
