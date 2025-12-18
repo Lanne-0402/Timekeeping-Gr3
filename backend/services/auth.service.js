@@ -9,7 +9,58 @@ import { generateEmployeeCode } from "../utils/idGenerator.js";
 // =====================
 // GMAIL SMTP
 // =====================
-const transporter = nodemailer.createTransport({
+
+// Import thư viện Mailjet
+import Mailjet from 'node-mailjet';
+import dotenv from 'dotenv';
+dotenv.config();
+
+// Kết nối với Mailjet
+const mailjet = Mailjet.apiConnect(
+    process.env.MJ_APIKEY_PUBLIC,
+    process.env.MJ_APIKEY_PRIVATE
+);
+
+const sendEmail = async (email, subject, text) => {
+    try {
+        const request = mailjet
+            .post("send", { 'version': 'v3.1' })
+            .request({
+                Messages: [
+                    {
+                        From: {
+                            Email: process.env.SENDER_EMAIL,
+                            Name: "Timekeeping App Gr3"
+                        },
+                        To: [
+                            {
+                                Email: email,
+                                Name: "Employee"
+                            }
+                        ],
+                        Subject: subject,
+                        // Bạn có thể dùng HTMLPart để trang trí mail đẹp hơn
+                        HTMLPart: `<h3>${subject}</h3><p>${text}</p>`, 
+                        TextPart: text
+                    }
+                ]
+            });
+
+        const result = await request;
+        console.log("✅ Mailjet sent successfully:", result.body);
+        return result.body;
+
+    } catch (error) {
+        console.error("❌ Mailjet Error:", error.statusCode, error.message);
+        // Lưu ý: Mailjet trả lỗi khá chi tiết, hãy xem log để biết tại sao
+        throw error; 
+    }
+};
+
+export default sendEmail;
+
+
+/** const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 2525,                 // Đổi sang cổng 587
   secure: false,             // Bắt buộc để false khi dùng cổng 587
@@ -20,7 +71,42 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false // Thêm dòng này để tránh lỗi chứng chỉ SSL trên Render
   }
-});
+}); **/
+
+/**  Import axios (nhớ cài đặt: npm install axios)
+import axios from 'axios'; 
+
+// Hàm gửi mail mới
+const sendEmail = async (email, subject, text) => {
+  try {
+    const data = {
+      sender: { name: "Timekeeping App", email: process.env.SENDER_EMAIL }, // Email sender đã verify trong Brevo
+      to: [{ email: email }],
+      subject: subject,
+      htmlContent: `<p>${text}</p>` // Hoặc truyền HTML đẹp hơn vào đây
+    };
+
+    const config = {
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY, // Biến môi trường mới
+        'content-type': 'application/json'
+      }
+    };
+
+    // Gọi API của Brevo (Chạy qua cổng 443 - Render không chặn)
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', data, config);
+    
+    console.log("✅ Email sent successfully via Brevo API");
+    return response.data;
+
+  } catch (error) {
+    console.error("❌ Send Email Error:", error.response ? error.response.data : error.message);
+    // Không throw error để tránh crash app, hoặc xử lý tùy logic của bạn
+  }
+};
+
+export default sendEmail; **/
 
 // =====================
 const USERS_COLLECTION = "users";
