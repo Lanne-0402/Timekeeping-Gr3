@@ -37,16 +37,6 @@ document.querySelectorAll(".view-switch").forEach(btn => {
     });
 });
 
-function showView(view) {
-    console.log("Switch to:", view);
-
-    document.querySelectorAll(".auth-form").forEach(f => f.classList.remove("active"));
-
-    if (view === "login") loginForm.classList.add("active");
-    if (view === "register") registerForm.classList.add("active");
-    if (view === "otp") otpForm.classList.add("active");
-    if (view === "reset") resetForm.classList.add("active");
-}
 // =========================
 
 function goStep(step) {

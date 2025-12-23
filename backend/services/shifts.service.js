@@ -20,7 +20,7 @@ export const createShiftService = async (payload = {}) => {
 
   if (!finalName) {
     if (date) {
-      finalName = `Ca ngày ${date} (${startTime}-${endTime})`;
+      finalName = `Ca - ${date} (${startTime}-${endTime})`;
     } else {
       finalName = `Ca (${startTime}-${endTime})`;
     }
@@ -42,7 +42,13 @@ export const createShiftService = async (payload = {}) => {
 
 
   // Nếu có ngày thì lưu luôn
-  if (date) shiftData.date = date;
+  if (date) {
+
+    const normalizedDate = date.includes("/")
+      ? date.split("/").reverse().join("-")
+      : date;
+    shiftData.date = normalizedDate;
+}
 
   await shiftRef.set(shiftData);
   return shiftData;
