@@ -438,6 +438,19 @@ function initShiftsUI() {
     shifts = filtered;
     renderShifts(filtered);
 });
+  const reloadBtn = document.getElementById("btnReloadShift");
+  if (reloadBtn) {
+    reloadBtn.addEventListener("click", async () => {
+      reloadBtn.classList.add("spin-once");
+
+      // Chờ animation xoay xong (450ms)
+      setTimeout(async () => {
+        await loadShifts();     // load lại sau khi xoay
+        reloadBtn.classList.remove("spin-once");
+      }, 450);
+    });
+  }
+
 
   const btnCreate = document.getElementById("btnCreateShift");
   if (btnCreate) {

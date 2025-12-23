@@ -20,7 +20,10 @@ export const createShiftService = async (payload = {}) => {
 
   if (!finalName) {
     if (date) {
-      finalName = `Ca - ${date} (${startTime}-${endTime})`;
+       const normalizedDate = date.includes("/")
+      ? date.split("/").reverse().join("-")
+      : date;
+      finalName = `Ca -${String(normalizedDate)}`; 
     } else {
       finalName = `Ca (${startTime}-${endTime})`;
     }
