@@ -445,7 +445,7 @@ function initShiftsUI() {
 
       // Chờ animation xoay xong (450ms)
       setTimeout(async () => {
-        await loadShifts();     // load lại sau khi xoay
+        await loadShifts(null, true);     // load lại sau khi xoay
         reloadBtn.classList.remove("spin-once");
       }, 450);
     });
@@ -514,35 +514,29 @@ function initShiftsUI() {
   }
 }
 
-async function loadShifts(monthKey) {
+async function loadShifts(monthKey,forceReload = false) {
   // 1️⃣ Nếu không truyền monthKey → mặc định tháng hiện tại
   if (!monthKey) {
     const today = new Date();
     monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   }
-
-  // 2️⃣ Nếu đã có cache → dùng lại, không gọi API
-  if (shiftCache[monthKey]) {
+  if (!forceReload && shiftCache[monthKey]) {
     shifts = shiftCache[monthKey];
     renderShifts(shifts);
     updateDashboard();
     return;
   }
-  
 
   try {
     const res = await fetch(`${API_BASE}/shifts?month=${monthKey}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      cache: "no-store",
     });
     const data = await res.json();
 
-    if (!data.success || !Array.isArray(data.data)) {
-      shifts = [];
-    } else {
-      shifts = data.data;
-      shiftCache[monthKey] = shifts; // lưu cache
-      allShifts = shifts;
-    }
+    shifts = data.success && Array.isArray(data.data) ? data.data : [];
+    shiftCache[monthKey] = shifts;
+    allShifts = shifts;
 
     renderShifts(shifts);
     updateDashboard();
