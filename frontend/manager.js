@@ -608,7 +608,10 @@ async function assignShifts({ userIds, shiftIds, date }) {
 }
 async function saveShiftChanges() {
   try {
-    const date = document.getElementById("editShiftDate").value;
+    const rawDate = document.getElementById("editShiftDate").value;
+    const date = rawDate.includes("/")
+  ? toInputDateFormat(rawDate)
+  : rawDate;
     const startTime = document.getElementById("editShiftStart").value;
     const endTime = document.getElementById("editShiftEnd").value;
 
