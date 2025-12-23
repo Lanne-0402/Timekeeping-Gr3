@@ -10,58 +10,74 @@ const Timestamp = admin.firestore.Timestamp;
 export const createShiftService = async (payload = {}) => {
   const { date, name, startTime, endTime } = payload;
 
-  // Bắt buộc phải có giờ
   if (!startTime || !endTime) {
     throw new Error("Thiếu giờ bắt đầu hoặc kết thúc");
   }
 
-  // Tự generate name nếu FE không gửi
-  let finalName = (name || "").trim();
-
-  if (!finalName) {
-    if (date) {
-       const normalizedDate = date.includes("/")
+  // 1️⃣ Chuẩn hóa date 1 lần duy nhất
+  let normalizedDate = null;
+  if (date) {
+    normalizedDate = date.includes("/")
       ? date.split("/").reverse().join("-")
       : date;
-      finalName = `Ca -${String(normalizedDate)}`; 
+  }
+
+  // 2️⃣ Đếm số ca trong ngày để xác định shiftIndex
+  let shiftIndex = 1;
+  if (normalizedDate) {
+    const snap = await db
+      .collection(SHIFTS_COLLECTION)
+      .where("date", "==", normalizedDate)
+      .get();
+
+    let maxIndex = 0;
+    snap.forEach(doc => {
+      const idx = doc.data().shiftIndex;
+      if (typeof idx === "number" && idx > maxIndex) {
+        maxIndex = idx;
+      }
+    });
+
+    shiftIndex = maxIndex + 1;
+  }
+
+  // 3️⃣ Tạo name (backend kiểm soát)
+  let finalName = (name || "").trim();
+  if (!finalName) {
+    if (normalizedDate) {
+      finalName = `Ca ${shiftIndex} – ${normalizedDate}`;
     } else {
       finalName = `Ca (${startTime}-${endTime})`;
     }
   }
 
   const shiftRef = db.collection(SHIFTS_COLLECTION).doc();
-
-  // Mã ca làm thân thiện
   const shiftCode = await generateShiftCode();
 
   const shiftData = {
-    id: shiftRef.id,          // vẫn giữ ID random
-    shiftCode,                // VD: CA001
+    id: shiftRef.id,
+    shiftCode,
+    shiftIndex,
     name: finalName,
     startTime,
     endTime,
     createdAt: Timestamp.now(),
   };
 
-
-  // Nếu có ngày thì lưu luôn
-  if (date) {
-
-    const normalizedDate = date.includes("/")
-      ? date.split("/").reverse().join("-")
-      : date;
+  if (normalizedDate) {
     shiftData.date = normalizedDate;
-}
+  }
 
   await shiftRef.set(shiftData);
   return shiftData;
 };
 
+
 /**
  * Lấy danh sách ca làm
  */
 export const getShiftsService = async (month) => {
-  // Nếu không có month thì lấy tháng hiện tại
+  // Xác định tháng cần xem
   let year, mon;
   if (month && month.includes("-")) {
     [year, mon] = month.split("-");
@@ -71,34 +87,39 @@ export const getShiftsService = async (month) => {
     mon = today.getMonth() + 1;
   }
 
-  const fromDate = `${year}-${String(mon).padStart(2, "0")}-01`;
-  const toDateObj = new Date(year, mon, 0); 
-  const toDate = toDateObj.toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
 
-  // 1️⃣ Lấy shift theo tháng yêu cầu
+  const monthStart = `${year}-${String(mon).padStart(2, "0")}-01`;
+  const monthEndObj = new Date(year, mon, 0);
+  const monthEnd = monthEndObj.toISOString().split("T")[0];
+
+  // ⭐ từ ngày hôm nay trở đi
+  const fromDate = todayStr > monthStart ? todayStr : monthStart;
+
+  // 1️⃣ Lấy ca từ hôm nay → hết tháng
   const shiftSnap = await db.collection("shifts")
     .where("date", ">=", fromDate)
-    .where("date", "<=", toDate)
+    .where("date", "<=", monthEnd)
     .orderBy("date", "asc")
     .get();
 
   const shifts = shiftSnap.docs.map(d => d.data());
   if (shifts.length === 0) return [];
 
-  // 2️⃣ Lấy user_shifts tương ứng (1 query)
+  // 2️⃣ Lấy user_shifts tương ứng
   const userShiftSnap = await db.collection("user_shifts")
     .where("date", ">=", fromDate)
-    .where("date", "<=", toDate)
+    .where("date", "<=", monthEnd)
     .get();
 
   const countMap = {};
-  userShiftSnap.docs.forEach((doc) => {
+  userShiftSnap.docs.forEach(doc => {
     const us = doc.data();
     countMap[us.shiftId] = (countMap[us.shiftId] || 0) + 1;
   });
 
-  // 3️⃣ Gộp số người trong ca
-  return shifts.map((s) => ({
+  // 3️⃣ Gộp số nhân viên
+  return shifts.map(s => ({
     ...s,
     employeeCount: countMap[s.id] || 0,
   }));
