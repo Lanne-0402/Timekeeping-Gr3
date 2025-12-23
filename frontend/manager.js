@@ -1276,7 +1276,11 @@ async function openEditShift(shiftId) {
   originalShiftUserIds = shift.userIds ? [...shift.userIds] : [];
   editingShiftUserIds = [...originalShiftUserIds];
   // Gán thông tin vào form
-  document.getElementById("editShiftDate").value = toInputDateFormat(shift.date);
+  const dateInput = document.getElementById("editShiftDate");
+
+  dateInput.value = shift.date.includes("/")
+    ? toInputDateFormat(shift.date)
+    : shift.date;
 
   document.getElementById("editShiftStart").value = shift.startTime;
   document.getElementById("editShiftEnd").value = shift.endTime;
