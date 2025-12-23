@@ -43,7 +43,7 @@ function getAuthHeaders(json) {
 document.addEventListener("DOMContentLoaded", async () => {
   currentUser = loadCurrentUser();
   flatpickr("#shiftDate", {
-    dateFormat: "d/m/Y",
+    dateFormat: "Y-m-d",
     altInput: true,
     altFormat: "d/m/Y",
     allowInput: true,

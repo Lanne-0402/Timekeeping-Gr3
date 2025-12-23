@@ -14,6 +14,12 @@ export const createShiftService = async (payload = {}) => {
   if (!startTime || !endTime) {
     throw new Error("Thiếu giờ bắt đầu hoặc kết thúc");
   }
+  let normalizedDate = null;
+  if (date) {
+    normalizedDate = date.includes("/")
+      ? date.split("/").reverse().join("-")
+      : date;
+  }
  // 2️⃣ Đếm số ca trong ngày để xác định shiftIndex
   let shiftIndex = 1;
   if (normalizedDate) {
@@ -33,17 +39,11 @@ export const createShiftService = async (payload = {}) => {
   }
 
   // Tự generate name nếu FE không gửi
-  let finalName = (name || "").trim();
-
+   let finalName = (name || "").trim();
   if (!finalName) {
-    if (date) {
-       const normalizedDate = date.includes("/")
-      ? date.split("/").reverse().join("-")
-      : date;
-      finalName = `Ca ${shiftIndex} – ${String(normalizedDate)}`; 
-    } else {
-      finalName = `Ca (${startTime}-${endTime})`;
-    }
+    finalName = normalizedDate
+      ? `Ca ${shiftIndex} – ${normalizedDate}`
+      : `Ca (${startTime}-${endTime})`;
   }
 
   const shiftRef = db.collection(SHIFTS_COLLECTION).doc();
