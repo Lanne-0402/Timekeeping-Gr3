@@ -1278,10 +1278,25 @@ async function openEditShift(shiftId) {
   // Gán thông tin vào form
   const dateInput = document.getElementById("editShiftDate");
 
-  dateInput.value = shift.date.includes("/")
-    ? toInputDateFormat(shift.date)
-    : shift.date;
+  // chuẩn hóa date cho input[type=date]
+  const raw = shift.date;
+  let normalizedDate = "";
 
+  if (raw instanceof Date) {
+    normalizedDate = raw.toISOString().slice(0, 10);
+  } else if (typeof raw === "string") {
+    if (raw.includes("T")) {
+      // ISO string: 2025-12-24T00:00:00.000Z
+      normalizedDate = raw.slice(0, 10);
+    } else if (raw.includes("/")) {
+      normalizedDate = toInputDateFormat(raw);
+    } else {
+      // yyyy-mm-dd
+      normalizedDate = raw;
+    }
+  }
+
+  dateInput.value = normalizedDate;
   document.getElementById("editShiftStart").value = shift.startTime;
   document.getElementById("editShiftEnd").value = shift.endTime;
 
