@@ -129,8 +129,11 @@ export const deleteShiftService = async (id) => {
  * hoặc tương thích cũ:
  *   { userId, shiftId, date }
  */
-export const assignShiftService = async (payload = {}) => {
+export const assignShiftService = async (payload) => {
   const { userId, shiftId, userIds, shiftIds, date } = payload;
+  if (!Array.isArray(userIds) || !Array.isArray(shiftIds)) {
+    throw new Error("assignShift yêu cầu userIds[] và shiftIds[]");
+  }
 
   if (!date) {
     throw new Error("Thiếu ngày gán ca");

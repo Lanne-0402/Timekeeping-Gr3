@@ -14,7 +14,8 @@ let editingEmpId = null;
 let currentEditShiftId = null;
 let shiftCache = {};
 let allShifts = [];
-
+let editingShiftUserIds = [];
+let originalShiftUserIds = [];
 // ---------------------------------------
 // Helper: lấy user + token từ localStorage
 // ---------------------------------------
@@ -353,55 +354,6 @@ async function deleteEmployee(userId) {
   loadEmployees();
 }
 
-
-
-// Gán ca làm (nhập date + chọn shift)
-function openAssignShift(userId) {
-  if (!shifts || shifts.length === 0) {
-    alert("Chưa có ca làm nào, hãy tạo ca trước.");
-    return;
-  }
-
-  const date = prompt("Nhập ngày làm (YYYY-MM-DD):");
-  if (!date) return;
-
-  // Gợi ý danh sách shift
-  const shiftListText = shifts
-    .map((s, idx) => `${idx + 1}. ${s.name} (${s.startTime} - ${s.endTime})`)
-    .join("\n");
-
-  const idxStr = prompt(
-    "Chọn ca bằng số thứ tự:\n" + shiftListText
-  );
-  if (!idxStr) return;
-
-  const idxNum = parseInt(idxStr, 10) - 1;
-  if (Number.isNaN(idxNum) || idxNum < 0 || idxNum >= shifts.length) {
-    alert("Lựa chọn không hợp lệ");
-    return;
-  }
-
-  const shift = shifts[idxNum];
-  assignShiftToUser(userId, shift.id, date);
-}
-
-async function assignShiftToUser(userId, shiftId, date) {
-  try {
-    const res = await fetch(`${API_BASE}/shifts/assign`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ userId, shiftId, date }),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Gán ca thất bại");
-    alert("Gán ca thành công!");
-    updateDashboard();
-  } catch (err) {
-    console.error("assign shift error:", err);
-    alert("Không gán được ca làm");
-  }
-}
-
 // =======================================
 // 2. QUẢN LÝ CA LÀM
 // =======================================
@@ -610,52 +562,94 @@ function loadAssignShifts() {
   });
 }
 
-function onAssignConfirm() {
+async function onAssignConfirm() {
   const userSel = document.getElementById("assignUser");
   const shiftSel = document.getElementById("assignShiftSelect");
   const dateInput = document.getElementById("assignDate");
 
   if (!userSel || !shiftSel || !dateInput) return;
 
-  const userIds = Array.from(userSel.selectedOptions).map((o) => o.value);
-  const shiftIds = Array.from(shiftSel.selectedOptions).map((o) => o.value);
+  const userIds = Array.from(userSel.selectedOptions).map(o => o.value);
+  const shiftIds = Array.from(shiftSel.selectedOptions).map(o => o.value);
   const date = dateInput.value;
 
-  if (!userIds.length) {
-    alert("Vui lòng chọn ít nhất 1 nhân viên.");
-    return;
-  }
-  if (!shiftIds.length) {
-    alert("Vui lòng chọn ít nhất 1 ca làm.");
-    return;
-  }
-  if (!date) {
-    alert("Vui lòng chọn ngày.");
-    return;
-  }
+  if (!userIds.length) return alert("Chọn ít nhất 1 nhân viên");
+  if (!shiftIds.length) return alert("Chọn ít nhất 1 ca");
+  if (!date) return alert("Chọn ngày");
 
-  assignShifts(userIds, shiftIds, date);
-}
-
-async function assignShifts(userIds, shiftIds, date) {
   try {
-    const res = await fetch(`${API_BASE}/shifts/assign`, {
-      method: "POST",
-      headers: getAuthHeaders(true),          // gửi JSON chuẩn
-      body: JSON.stringify({ userIds, shiftIds, date }),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.message || "Gán ca thất bại");
-
-    alert("Đã gán ca thành công!");
-    const modal = document.getElementById("assignModal");
-    if (modal) modal.classList.add("hidden");
-    updateDashboard();
+    await assignShifts({ userIds, shiftIds, date });
+    alert("Đã gán ca thành công");
+    document.getElementById("assignModal")?.classList.add("hidden");
+    await loadShifts(null, true);
   } catch (err) {
-    console.error("assignShifts error:", err);
-    alert("Không gán được ca làm");
+    alert(err.message);
   }
 }
+
+async function assignShifts({ userIds, shiftIds, date }) {
+  const res = await fetch(`${API_BASE}/shifts/assign`, {
+    method: "POST",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify({
+      userIds,
+      shiftIds,
+      date
+    })
+  });
+
+  const json = await res.json();
+
+  if (!json.success) {
+    throw new Error(json.message || "Gán ca thất bại");
+  }
+
+  return json.data;
+}
+async function saveShiftChanges() {
+  try {
+    const date = document.getElementById("editShiftDate").value;
+    const startTime = document.getElementById("editShiftStart").value;
+    const endTime = document.getElementById("editShiftEnd").value;
+
+    // 1️⃣ Update ca
+    await fetch(`${API_BASE}/shifts/${currentEditShiftId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(true),
+      body: JSON.stringify({ date, startTime, endTime })
+    });
+
+    // 2️⃣ Gán nhân viên (nếu có)
+    const newUserIds = editingShiftUserIds.filter(
+      id => !originalShiftUserIds.includes(id)
+    );
+
+    if (newUserIds.length > 0) {
+      await assignShifts({
+        userIds: newUserIds,
+        shiftIds: [currentEditShiftId],
+        date
+      });
+    }
+
+    alert("Đã lưu thay đổi");
+    closeEditShiftModal();
+    await loadShifts(null, true);
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-close-modal]");
+  if (!btn) return;
+
+  const modalId = btn.dataset.closeModal;
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add("hidden");
+});
+
 // =======================================
 // 3. THỐNG KÊ & BÁO CÁO (FLOW MỚI — CLEAN)
 // =======================================
@@ -1276,15 +1270,13 @@ async function openEditShift(shiftId) {
   if (!data.success) return alert(data.message);
 
   const shift = data.data;
-
+  originalShiftUserIds = shift.userIds ? [...shift.userIds] : [];
+  editingShiftUserIds = [...originalShiftUserIds];
   // Gán thông tin vào form
   document.getElementById("editShiftDate").value = toInputDateFormat(shift.date);
 
   document.getElementById("editShiftStart").value = shift.startTime;
   document.getElementById("editShiftEnd").value = shift.endTime;
-
-  // Load nhân viên trong ca
-  loadEmployeesInShift(shiftId);
 
   // Load danh sách nhân viên để thêm
   loadEmployeeDropdown();
@@ -1294,32 +1286,11 @@ async function openEditShift(shiftId) {
 
 function closeEditShiftModal() {
   document.getElementById("editShiftModal").classList.add("hidden");
+  editingShiftUserIds = [];
+  originalShiftUserIds = [];
+  currentEditShiftId = null;
 }
-async function loadEmployeesInShift(shiftId) {
-  const box = document.getElementById("editShiftEmployees");
-  box.innerHTML = "Đang tải...";
 
-  const res = await fetch(`${API_BASE}/shifts/${shiftId}/employees`, {
-    headers: getAuthHeaders()
-  });
-  const data = await res.json();
-
-  if (!data.success) {
-    box.innerHTML = "Lỗi tải nhân viên";
-    return;
-  }
-
-  box.innerHTML = "";
-
-  data.data.forEach(emp => {
-    box.innerHTML += `
-      <div>
-        <span>${emp.employeeCode} – ${emp.name}</span>
-        <button class="btn outline small" onclick="removeEmployee('${emp.id}')">X</button>
-      </div>
-    `;
-  });
-}
 async function loadEmployeeDropdown() {
   const sel = document.getElementById("editShiftAddEmployee");
   if (!sel) return;
@@ -1333,65 +1304,8 @@ async function loadEmployeeDropdown() {
     });
 }
 
-async function confirmAddEmployee() {
-  const empId = document.getElementById("editShiftAddEmployee").value;
-  if (!empId) return;
-
-  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}/add-employee`, {
-    method: "POST",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify({ userId: empId })
-  });
-
-  const data = await res.json();
-  if (!data.success) return alert(data.message);
-
-  loadEmployeesInShift(currentEditShiftId);
-  alert("Đã thêm nhân viên!");
+function addEmployeeToEditingShift(userId) {
+  if (!editingShiftUserIds.includes(userId)) {
+    editingShiftUserIds.push(userId);
+  }
 }
-
-async function removeEmployee(userId) {
-  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}/remove-employee`, {
-    method: "POST",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify({ userId })
-  });
-
-  const data = await res.json();
-  if (!data.success) return alert(data.message);
-
-  loadEmployeesInShift(currentEditShiftId);
-  alert("Đã xoá nhân viên!");
-}
-
-async function saveShiftChanges() {
-  const payload = {
-    date: document.getElementById("editShiftDate").value,
-    startTime: document.getElementById("editShiftStart").value,
-    endTime: document.getElementById("editShiftEnd").value
-  };
-
-  const res = await fetch(`${API_BASE}/shifts/${currentEditShiftId}`, {
-    method: "PUT",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-
-  if (!data.success) return alert(data.message);
-
-  alert("Đã lưu thay đổi!");
-  closeEditShiftModal();
-
-  // reload danh sách ca ở trang manager
-  loadShifts();
-}
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-close-modal]");
-  if (!btn) return;
-
-  const modalId = btn.dataset.closeModal;
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.add("hidden");
-});
