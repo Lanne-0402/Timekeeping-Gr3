@@ -78,26 +78,10 @@ export const createShiftService = async (payload = {}) => {
 /**
  * Lấy danh sách ca làm
  */
-export const getShiftsService = async (month) => {
-  // Xác định tháng cần xem
-  let year, mon;
-  if (month && month.includes("-")) {
-    [year, mon] = month.split("-");
-  } else {
-    const today = new Date();
-    year = today.getFullYear();
-    mon = today.getMonth() + 1;
-  }
-
+export const getShiftsService = async () => {
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const monthStart = `${year}-${String(mon).padStart(2, "0")}-01`;
-  const monthEndObj = new Date(year, mon, 0);
-
-  // ⭐ từ ngày hôm nay trở đi
-  const fromDate = todayStr > monthStart ? todayStr : monthStart;
-
-  // 1️⃣ Lấy ca từ hôm nay → hết tháng
+  // 1️⃣ Lấy tất cả ca từ hôm nay trở đi
   const shiftSnap = await db
     .collection("shifts")
     .where("date", ">=", todayStr)
@@ -107,9 +91,10 @@ export const getShiftsService = async (month) => {
   const shifts = shiftSnap.docs.map(d => d.data());
   if (shifts.length === 0) return [];
 
-  // 2️⃣ Lấy user_shifts tương ứng
-  const userShiftSnap = await db.collection("user_shifts")
-    .where("date", ">=", fromDate)
+  // 2️⃣ Lấy user_shifts từ hôm nay trở đi
+  const userShiftSnap = await db
+    .collection("user_shifts")
+    .where("date", ">=", todayStr)
     .get();
 
   const countMap = {};
@@ -124,6 +109,7 @@ export const getShiftsService = async (month) => {
     employeeCount: countMap[s.id] || 0,
   }));
 };
+
  
 
 /**
